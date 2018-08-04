@@ -6,5 +6,4 @@ function setup_mcnCrossModalEmotions()
 % Licensed under The MIT License [see LICENSE.md for details]
 
   root = fileparts(mfilename('fullpath')) ;
-  addpath(root, [root '/core'], [root '/scripts']) ;
-  addpath(root, [root '/exps'], [root '/misc']) ;
+  addpath(root, [root '/emoVoxCeleb']) ;
