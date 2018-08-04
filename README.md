@@ -13,7 +13,7 @@ vl_contrib('setup', 'mcnCrossModalEmotions') ;
 
 ### Dependencies
 
-mcnFerPlus requires the following module (which will be downloaded automatically):
+mcnCrossModalEmotions requires the following module (which will be downloaded automatically):
 
 * [mcnDatasets](https://github.com/albanie/mcnDatasets) - dataset helpers for MatConvNet
 * [autonn](https://github.com/vlfeat/autonn) - autodiff for MatConvNet
