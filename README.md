@@ -24,19 +24,20 @@ In this work we first train a CNN in a fully supervised manner to perform emotio
 
 The bigger aim is to try to see if there is enough common signal between the facial expression and voice to train the student to match the outputs of the teacher.   If successful, this would allow us to train a model for speech recognition with only access to labelled facial expressions in images. 
 
-In the paper, we show that there is sufficient signal to learn emotion-predictive embeddings in the student, but that it is a very noisy task.  We validate that the student has learned something useful by testing it on external datasets for speech emotion recognition and showing that it can do quite a lot better than random, but as one would expect, not as well as a model trained with speech labels.
 
 **References**:
 
 [1] Gupta, Saurabh, Judy Hoffman, and Jitendra Malik. "Cross modal distillation for supervision transfer." Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition. 2016 ([link](https://arxiv.org/abs/1507.00448))
 
-### Analysis
+### Distillation
 
-By treating the dominant prediction of the teacher as kind of ground-truth one-hot label, we can assess whether the student is to match some portion of its predictive signal. For each emotion below, we first show the ROC curve for the student on the training set, followed by predictions on the test set of "heard" identities in the second column, then "unheard" identities in the third column. 
+In the paper, we show that there is sufficient signal to learn emotion-predictive embeddings in the student, but that it is a very noisy task.  We validate that the student has learned something useful by testing it on external datasets for speech emotion recognition and showing that it can do quite a lot better than random, but as one would expect, not as well as a model trained with speech labels (Table 5 in the paper).
 
-The idea here is that by looking at the performance on previously heard/unheard identities we can get some idea as to whether it is trying to solve the task by "cheating".  In this case, cheating would correspond to exploiting some bias in the dataset by memorising the identity of the speaker, rather than listening to the emotional content of their speech.  
+By treating the dominant prediction of the teacher as kind of ground-truth one-hot label, we can also assess whether the student is to match some portion of the teacher's predictive signal. It's worth noting that since we are using interview data to perform the distillation (because this is what VoxCeleb consists of), emotions such as neutral and happiness are better represented in the videos.   For each emotion below, we first show the ROC curve for the student on the training set, followed by predictions on the test set of "heard" identities in the second column, then "unheard" identities in the third column. 
 
-We find that the student is able to learn a weak signal for matching the dominant emotion predicted by the teacher.  Since we are using interview data to perform the distillation (because this is what VoxCeleb consists of), emotions such as neutral and happiness are better represented in the videos.  However, we find that certain emotions, such as sadness, appear to be difficult to predict.
+The idea here is that by looking at the performance on previously heard/unheard identities we can get some idea as to whether it is trying to solve the task by "cheating".  In this case, cheating would correspond to exploiting some bias in the dataset by memorising the identity of the speaker, rather than listening to the emotional content of their speech.   
+
+We find that the student is able to learn a weak classifier for the dominant emotion predicted by the teacher, hinting that there may be a small redundant signal between the (human annotated) facial emotion of a speaker and their (human annotated) speech emotion.
 
 **Anger**
 
@@ -63,4 +64,4 @@ We find that the student is able to learn a weak signal for matching the dominan
 <img src="emoVoxCeleb/figs/fear-train.jpg" width="200" /> <img src="emoVoxCeleb/figs/fear-heardTest.jpg" width="200" /> <img src="emoVoxCeleb/figs/fear-unheardTest.jpg" width="200" />
 
 
-Note that since the dataset is highly unbalanced, some of the emotions have very few samples. The remaining emotions (disgust and contempt) are rarely predicted by the teacher, so the curves don't provide much insight. 
+Note that since the dataset is highly unbalanced, some of the emotions have very few samples - the remaining emotions (disgust and contempt) are not predicted as dominant by the teacher on any frames of the test set. 
