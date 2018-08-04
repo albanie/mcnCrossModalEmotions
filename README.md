@@ -2,8 +2,6 @@
 
 This module contains code in support of the paper [Emotion Recognition in Speech using Cross-Modal Transfer in the Wild](http://www.robots.ox.ac.uk/~vgg/research/cross-modal-emotions).
 
-**Note**: This repo focuses on the code for teacher-student distillation and student analysis. For the code used to train the facial expression CNN teacher and to download pretrained models, see [mcnFerPlus](https://github.com/albanie/mcnFerPlus) instead.
-
 ### Installation
 
 The easiest way to use this module is to install it with the `vl_contrib` package manager. `mcnCrossModalEmotions` can be installed with the following commands from the root directory of your MatConvNet installation:
@@ -12,6 +10,13 @@ The easiest way to use this module is to install it with the `vl_contrib` packag
 vl_contrib('install', 'mcnCrossModalEmotions') ;
 vl_contrib('setup', 'mcnCrossModalEmotions') ;
 ```  
+
+### Dependencies
+
+mcnFerPlus requires the following module (which will be downloaded automatically):
+
+* [mcnDatasets](https://github.com/albanie/mcnDatasets) - dataset helpers for MatConvNet
+* [autonn](https://github.com/vlfeat/autonn) - autodiff for MatConvNet
 
 ### Overview
 
@@ -28,6 +33,26 @@ The bigger aim is to try to see if there is enough common signal between the fac
 **References**:
 
 [1] Gupta, Saurabh, Judy Hoffman, and Jitendra Malik. "Cross modal distillation for supervision transfer." Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition. 2016 ([link](https://arxiv.org/abs/1507.00448))
+
+
+### Teacher Training
+
+
+**Usage**: To use the teacher code, running [exps/bencmark\_ferplus\_models.m](exps/benchmark_ferplus_models.m) will download the pretrained teacher models and data and launch an evaluation function.  New teacher models can be trained with the [exps/ferplus\_baselines.m](exps/ferplus_baselines.m) function.
+
+
+The following pretrained teacher CNNs are available:
+
+
+| model | pretraining | training | Fer2013+ Val | Fer2013+ Test |
+|-------|-------------|----------|--------------|---------------|
+| resnet50-ferplus | [VGGFace2](https://arxiv.org/abs/1710.08092) | [Fer2013+](https://github.com/Microsoft/FERPlus) | 89.0 | 87.6 |
+| senet50-ferplus | [VGGFace2](https://arxiv.org/abs/1710.08092) | [Fer2013+](https://github.com/Microsoft/FERPlus) | 89.8 | 88.8 |
+
+More details relating to the models can be found [here](http://www.robots.ox.ac.uk/~albanie/mcn-models.html#cross-modal-emotion).
+
+
+
 
 ### Distillation
 
@@ -65,3 +90,35 @@ We find that the student is able to learn a weak classifier for the dominant emo
 
 
 Note that since the dataset is highly unbalanced, some of the emotions have very few samples - the remaining emotions (disgust and contempt) are not predicted as dominant by the teacher on any frames of the test set. 
+
+### References
+
+If you find the models or code useful, please consider citing:
+
+```
+Albanie, Samuel, and Nagrani, Arsha and Vedaldi, Andrea, and Zisserman, Andrew,
+"Emotion Recognition in Speech using Cross-Modal Transfer in the Wild." 
+ACM Multimedia, 2018. 
+```
+
+References for the related datasets are the FER2013+ dataset:
+
+```
+@inproceedings{BarsoumICMI2016,
+    title={Training Deep Networks for Facial Expression Recognition with Crowd-Sourced Label Distribution},
+    author={Barsoum, Emad and Zhang, Cha and Canton Ferrer, Cristian and Zhang, Zhengyou},
+    booktitle={ACM International Conference on Multimodal Interaction (ICMI)},
+    year={2016}
+}
+```
+
+and the VoxCeleb dataset:
+
+```
+@article{nagrani2017voxceleb,
+  title={Voxceleb: a large-scale speaker identification dataset},
+  author={Nagrani, Arsha and Chung, Joon Son and Zisserman, Andrew},
+  journal={arXiv preprint arXiv:1706.08612},
+  year={2017}
+}
+```
