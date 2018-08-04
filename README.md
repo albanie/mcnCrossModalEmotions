@@ -30,4 +30,4 @@ By treating the dominant prediction of the teacher as kind of ground-truth label
 
 <img src="emoVoxCeleb/figs/fear-train.jpg" width="200" /> <img src="emoVoxCeleb/figs/fear-heardTest.jpg" width="200" /> <img src="emoVoxCeleb/figs/fear-unheardTest.jpg" width="200" />
 
-Interestingly, the speech model seems to struggle most with sadness.   Note that since the dataset is highly unbalanced, some of the emotions have very few samples (you can see this in ROC curves that make large steps). The remaining emotions (disgust and contempt) are rarely predicted by the teacher, so the curves don't provide much isnight. 
+Note that since the dataset is highly unbalanced, some of the emotions have very few samples. The speech model struggles most with sadness and fear.  The remaining emotions (disgust and contempt) are rarely predicted by the teacher, so the curves don't provide much isnight. 
