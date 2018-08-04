@@ -2,12 +2,41 @@
 
 This module contains code in support of the paper [Emotion Recognition in Speech using Cross-Modal Transfer in the Wild](http://www.robots.ox.ac.uk/~vgg/research/cross-modal-emotions).
 
-**Note**: This repo focuses on the code for distillation and student analysis. For the code used to trainer the facial expression CNN teacher and to download pretrained models, see [mcnFerPlus](https://github.com/albanie/mcnFerPlus) instead.
+**Note**: This repo focuses on the code for teacher-student distillation and student analysis. For the code used to train the facial expression CNN teacher and to download pretrained models, see [mcnFerPlus](https://github.com/albanie/mcnFerPlus) instead.
 
+### Installation
+
+The easiest way to use this module is to install it with the `vl_contrib` package manager. `mcnCrossModalEmotions` can be installed with the following commands from the root directory of your MatConvNet installation:
+
+```
+vl_contrib('install', 'mcnCrossModalEmotions') ;
+vl_contrib('setup', 'mcnCrossModalEmotions') ;
+```  
+
+### Overview
+
+The high level idea of this work is to see if there is some common signal between the emotional content of someone's facial expression (or at least, how human annotators would label their expression) and the emotional content of their speech.  
+
+Emotion is a notoriously noisy visual (or audio) signal for machine learning tasks. This is due to a number of reasons, but perhaps the most important one is that there is no "ground truth" (we rarely know the true emotional state of the subject, given only a picture of their face or a segment of their speech).  Despite this, it is possible to get a reasonably high level of agreement among human annotators when labelling facial expressions with emotion and we can use this as a flawed, but potentially still useful proxy for emotional state (predicting these human annotator labels is what we refer to as "emotion recognition").  
+
+In this work we first train a CNN in a fully supervised manner to perform emotion recognition from faces.  We do this by taking a state-of-the-art image classification model (a [Squeeze-and-Excitation](https://arxiv.org/abs/1709.01507) network) that has been pretrained on a large face verification task ([VGGFace2](https://www.robots.ox.ac.uk/~vgg/data/vgg_face2/vggface2.pdf)) and then fine tune it to predict emotions on the much smaller [FERPlus](https://github.com/Microsoft/FERPlus) dataset. We then use the technique of cross-modal distillation popularised by [1] which aims to "distill" the knowledge of the facial expression model (the "teacher") across modalities to a "student" model that only gets to hear the speech of the speaker, but does not see their face. We apply this distillation process across a large collection of unlabelled videos (the [VoxCeleb](http://www.robots.ox.ac.uk/~vgg/data/voxceleb/) dataset), by making emotion predictions for faces in the video clips with the teacher model and training a student model to match the distribution of teacher predictions.
+
+
+The bigger aim is to try to see if there is enough common signal between the facial expression and voice to train the student to match the outputs of the teacher.   If successful, this would allow us to train a model for speech recognition with only access to labelled facial expressions in images. 
+
+In the paper, we show that there is sufficient signal to learn emotion-predictive embeddings in the student, but that it is a very noisy task.  We validate that the student has learned something useful by testing it on external datasets for speech emotion recognition and showing that it can do quite a lot better than random, but as one would expect, not as well as a model trained with speech labels.
+
+**References**:
+
+[1] Gupta, Saurabh, Judy Hoffman, and Jitendra Malik. "Cross modal distillation for supervision transfer." Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition. 2016 ([link](https://arxiv.org/abs/1507.00448))
 
 ### Analysis
 
-By treating the dominant prediction of the teacher as kind of ground-truth label, we can see how well the student is able to match it. For each emotion below, we first show the ROC curve for the student on the training set, followed by predictions on the test set of "heard" identities in the second column, then "unheard" identities in the third column.
+By treating the dominant prediction of the teacher as kind of ground-truth one-hot label, we can assess whether the student is to match some portion of its predictive signal. For each emotion below, we first show the ROC curve for the student on the training set, followed by predictions on the test set of "heard" identities in the second column, then "unheard" identities in the third column. 
+
+The idea here is that by looking at the performance on previously heard/unheard identities we can get some idea as to whether it is trying to solve the task by "cheating".  In this case, cheating would correspond to exploiting some bias in the dataset by memorising the identity of the speaker, rather than listening to the emotional content of their speech.  
+
+We find that the student is able to learn a weak signal, particularly for emotions like anger, neutral and happiness.  Since we are using interview data to perform the distillation (because this is what VoxCeleb consists of), these emotions are better represented in the videos. Certain emotions, such as sadness, appear to be more  difficult.
 
 **Anger**
 
@@ -21,6 +50,9 @@ By treating the dominant prediction of the teacher as kind of ground-truth label
 
 <img src="emoVoxCeleb/figs/neutral-train.jpg" width="200" /> <img src="emoVoxCeleb/figs/neutral-heardTest.jpg" width="200" /> <img src="emoVoxCeleb/figs/neutral-unheardTest.jpg" width="200" />
 
+**Surprise**
+
+<img src="emoVoxCeleb/figs/surprise-train.jpg" width="200" /> <img src="emoVoxCeleb/figs/surprise-heardTest.jpg" width="200" /> <img src="emoVoxCeleb/figs/surprise-unheardTest.jpg" width="200" />
 
 **Sadness**
 
@@ -30,4 +62,5 @@ By treating the dominant prediction of the teacher as kind of ground-truth label
 
 <img src="emoVoxCeleb/figs/fear-train.jpg" width="200" /> <img src="emoVoxCeleb/figs/fear-heardTest.jpg" width="200" /> <img src="emoVoxCeleb/figs/fear-unheardTest.jpg" width="200" />
 
-Note that since the dataset is highly unbalanced, some of the emotions have very few samples. The speech model struggles most with sadness and fear.  The remaining emotions (disgust and contempt) are rarely predicted by the teacher, so the curves don't provide much isnight. 
+
+Note that since the dataset is highly unbalanced, some of the emotions have very few samples. The remaining emotions (disgust and contempt) are rarely predicted by the teacher, so the curves don't provide much insight. 
