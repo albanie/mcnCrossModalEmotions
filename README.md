@@ -36,7 +36,7 @@ By treating the dominant prediction of the teacher as kind of ground-truth one-h
 
 The idea here is that by looking at the performance on previously heard/unheard identities we can get some idea as to whether it is trying to solve the task by "cheating".  In this case, cheating would correspond to exploiting some bias in the dataset by memorising the identity of the speaker, rather than listening to the emotional content of their speech.  
 
-We find that the student is able to learn a weak signal, particularly for emotions like anger, neutral and happiness.  Since we are using interview data to perform the distillation (because this is what VoxCeleb consists of), these emotions are better represented in the videos. Certain emotions, such as sadness, appear to be more  difficult.
+We find that the student is able to learn a weak signal for matching the dominant emotion predicted by the teacher.  Since we are using interview data to perform the distillation (because this is what VoxCeleb consists of), emotions such as neutral and happiness are better represented in the videos.  However, we find that certain emotions, such as sadness, appear to be difficult to predict.
 
 **Anger**
 
