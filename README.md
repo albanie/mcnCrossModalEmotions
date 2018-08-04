@@ -20,7 +20,7 @@ mcnFerPlus requires the following module (which will be downloaded automatically
 
 ### Overview
 
-The high level idea of this work is to see if there is some common signal between the emotional content of someone's facial expression (or at least, how human annotators would label their expression) and the emotional content of their speech.  
+The high level idea of this work is to see if there is some common signal between the emotional content of a speaker's facial expression (or at least, how human annotators would label their expression) and the emotional content of their speech.  
 
 Emotion is a notoriously noisy visual (or audio) signal for machine learning tasks. This is due to a number of reasons, but perhaps the most important one is that there is no "ground truth" (we rarely know the true emotional state of the subject, given only a picture of their face or a segment of their speech).  Despite this, it is possible to get a reasonably high level of agreement among human annotators when labelling facial expressions with emotion and we can use this as a flawed, but potentially still useful proxy for emotional state (predicting these human annotator labels is what we refer to as "emotion recognition").  
 
