@@ -208,7 +208,8 @@ function dag = configureForClassification(dag, finetuneLR, dropout, lossType)
 %   Appropriate meta information is also added for the emotion recognition
 %   task
 
-  if dropout > 0 ~any(arrayfun(@(x) isa(x.block, 'dagnn.Dropout'), dag.layers))
+  hasDropout = any(arrayfun(@(x) isa(x.block, 'dagnn.Dropout'), dag.layers)) ;
+  if dropout > 0  && ~hasDropout
     convIdx = arrayfun(@(x) isa(x.block, 'dagnn.Conv'), dag.layers) ;
     convLayers = dag.layers(convIdx) ;
     %sel =  convLayers(end-3:end-2) ;

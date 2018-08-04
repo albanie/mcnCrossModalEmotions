@@ -1,4 +1,4 @@
-%function student_stats(varargin)
+function student_stats(varargin)
 %STUDENT_STATS - compute the statistics for student predictions
 %   STUDENT_STATS(VARARGIN) computes the similarity bewteen
 %   predictions made by the student model (which operates on voices)
@@ -19,7 +19,7 @@
 %    If true, visualise the distriution of dominant predictions made by
 %    the teacher.
 %
-% Copyright (C) 2018 Samuel Albanie
+% Copyright (C) 2018 Samuel Albanie, Arsha Nagrani
 % Licensed under The MIT License [see LICENSE.md for details]
 
   opts.refresh = false ;
@@ -31,7 +31,7 @@
   opts.partition = 'all' ;
   opts.expRoot = fullfile(vl_rootnn, '/data/xEmo18') ;
   opts.teacher = 'senet50_ft-dag-distributions-CNTK-dropout-0.5-aug' ;
-  %opts = vl_argparse(opts, varargin) ;
+  opts = vl_argparse(opts, varargin) ;
 
   if opts.refresh
     modelPairs = getAudioModels('teacherType', 'CNTK') ;
