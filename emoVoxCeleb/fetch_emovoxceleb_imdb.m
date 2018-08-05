@@ -55,7 +55,7 @@ function imdb = buildImdb(teacher, varargin)
 %  in total).  This will take a long time on a single GPU.
 
 	opts.gpus = 1 ;
-  opts.limit = 3 ; % for debugging
+  opts.limit = inf ; % for debugging
   batchSize = 128 ;
   numEmotions = 8 ;
   opts.srcImdb = fullfile(vl_rootnn, 'data/voxceleb/imdb.mat') ;
@@ -138,6 +138,8 @@ function imdb = buildImdb(teacher, varargin)
     wavLogits(ii) = {logits(imdb.images.denseFramesWavIds == idx,:)} ;
   end
   imdb.wavLogits = wavLogits ;
+
+  imdb = updateSubsetsAndTags(imdb) ;
 end
 
 % --------------------------------------------------------------------------
@@ -260,4 +262,67 @@ function imdb = addFramesToImdb(imdb, faceDir)
   % store corresponding frames on the imdb object
   imdb.images.denseFrames = framePathsRelative ;
   imdb.images.denseFramesWavIds =  wavIds ;
+end
+
+% -----------------------------------------------------------
+function imdb = updateSubsetsAndTags(imdb)
+% -----------------------------------------------------------
+
+  % update sets to match Seeing Voices Hearing Faces splits
+  if ~isfield(imdb.images, 'identSet')
+    imdb.images.identSet = imdb.images.set ;
+  end
+
+	%fprintf('removing identities that start with E...') ; tic ;
+	unheardTest = cellfun(@(x) ismember(x(1), {'C', 'D', 'E'}), ...
+                                              imdb.images.name) ;
+	unheardVal = cellfun(@(x) ismember(x(1), {'A', 'B'}), imdb.images.name) ;
+	fprintf('found %d indentities beginning A-E, setting as unheard set...', ...
+                                        sum(unheardVal) + sum(unheardTest)) ;
+	fprintf('done in %g s\n', toc) ;
+
+	unheardSet = ones(1, numel(imdb.images.name)) ;
+	unheardSet(unheardVal) = 2 ;
+	unheardSet(unheardTest) = 3 ;
+	imdb.images.unheardSet = unheardSet ;
+
+  % note that "heard" may include a mixture of both heard and unheard -
+  % it simply means that not all identities are "unheard"
+  heardVal = imdb.images.identSet == 2 ;
+  heardTest = imdb.images.identSet == 3 ;
+
+	intersectSet = ones(1, numel(imdb.images.name)) ;
+	intersectSet(heardVal) = 4 ;
+	intersectSet(heardTest) = 5 ;
+	intersectSet(unheardVal) = 2 ;
+	intersectSet(unheardTest) = 3 ;
+	imdb.images.intersectSet = intersectSet ;
+
+  if isfield(imdb.images, 'set')
+    imdb.images = rmfield(imdb.images, 'set') ; % remove to avoid confusion
+  end
+  imdb = updateTags(imdb) ;
+end
+
+% -------------------------------------------------------
+function imdb = updateTags(imdb)
+% -------------------------------------------------------
+  fprintf('updating tags ...') ; tic ;
+  newTags = {'rawMaxEmoTags', 'rawMeanEmoTags'} ;
+  for ii = 1:numel(newTags)
+    newTag = newTags{ii} ;
+    if ~isfield(imdb, newTag)
+      switch newTag
+        case 'rawMeanEmoTags'
+          aggregator = @(x) mean(x, 1) ;
+        case 'rawMaxEmoTags'
+          aggregator = @(x) max(x, [], 1) ;
+        otherwise, error('unknown tag %s\n', newTag) ;
+      end
+      fused = cellfun(aggregator, imdb.wavLogits, 'uni', 0) ;
+      [~,tags] = cellfun(@max, fused) ;
+      imdb.(newTag) = tags ;
+    end
+  end
+	fprintf('done in %g s\n', toc) ;
 end
