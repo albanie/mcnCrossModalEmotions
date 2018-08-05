@@ -40,7 +40,7 @@ end
 % ------------------------------------------------------------------
 function imdbPath = getImdbPath(imdbDir, teacher)
 % ------------------------------------------------------------------
-	template = '%s-logits-combined-tagged' ;
+	template = '%s-logits' ;
 	template = [template '.mat'] ;
 	teacherLogits = sprintf(template, teacher) ;
 	imdbPath = fullfile(imdbDir, teacherLogits) ;
@@ -49,9 +49,14 @@ end
 % ------------------------------------------------------------------
 function imdb = buildImdb(teacher, varargin)
 % ------------------------------------------------------------------
+%BUILDIMDB - store all teacher predictions in an imdb
+%  IMDB = BUILDIMDB(TEACHER, VARARGIN) computes the output of the
+%  teacher for almost all extracted frames of VoxCeleb (approx. 5 million
+%  in total).  This will take a long time on a single GPU.
+
 	opts.gpus = 1 ;
+  opts.limit = 3 ; % for debugging
   batchSize = 128 ;
-  opts.limit = inf ;
   numEmotions = 8 ;
   opts.srcImdb = fullfile(vl_rootnn, 'data/voxceleb/imdb.mat') ;
   opts.imdbPath = fullfile(vl_rootnn, 'data/xEmo18/dense_imdb/imdb.mat') ;
@@ -60,9 +65,8 @@ function imdb = buildImdb(teacher, varargin)
   opts.faceDir = '/dev/shm/albanie/unzippedIntervalFaces' ;
   opts = vl_argparse(opts, varargin) ;
 
-
-  % work relative to audio files
-  %if ~exist('imdb', 'var')
+  [imdb, found] = dev_cache('imdbPlusDenseFrames') ;
+  if ~found
     if exist(opts.imdbPath, 'file')
       fprintf('loading imdb from memory...') ; tic ;
       imdb = load(opts.imdbPath) ;
@@ -75,50 +79,18 @@ function imdb = buildImdb(teacher, varargin)
       fprintf('adding frames to imdb...') ; tic ;
       imdb = addFramesToImdb(imdb, opts.faceDir) ;
       mkdir(fileparts(opts.imdbPath)) ;
-      save(opts.imdbPath, '-struct', 'imdb') ; % do not use compression if poss
+      % try to avoid compression if poss here - the imdb should be approx
+      % 1GB in memory
+      save(opts.imdbPath, '-struct', 'imdb') ;
       fprintf('done in %g s\n', toc) ;
+      dev_cache('imdbPlusDenseFrames', imdb) ;
     end
-  %end
-  keyboard
-
-  numWavs = numel(imdb.images.name) ;
-  paritionSize = round(numWavs / 4) ;
-  % partition based on expId, keeping it basic
-  keep1 = 1:paritionSize ;
-  keep2 = paritionSize+1:2*paritionSize ;
-  keep3 = 2*paritionSize+1:3*paritionSize ;
-  keep4 = 3*paritionSize+1:numWavs ;
-  kept = [keep1 keep2 keep3 keep4] ;
-  assert(numel(unique(kept)) == numel(kept), 'repeated idx') ;
-  assert(numel(kept) == numWavs, 'missing idx') ;
-
-  switch expId
-    case 1, keep = keep1 ;
-    case 2, keep = keep2 ;
-    case 3, keep = keep3 ;
-    case 4, keep = keep4 ;
-    otherwise, error('unexpected id: %d\n', expId) ;
   end
 
-  % extract partitionImdb
-  fnames = {'name', 'id', 'set', 'sp', 'video', 'track'} ;
-  for ii = 1:numel(fnames)
-    fname = fnames{ii} ;
-    partitionImdb.images.(fname) = imdb.images.(fname)(keep) ;
-  end
-  fnames = {'denseFrames', 'denseFramesWavIds'} ;
-  for ii = 1:numel(fnames)
-    fname = fnames{ii} ;
-    frameKeep = ismember(imdb.images.denseFramesWavIds, keep) ;
-    partitionImdb.images.(fname) = imdb.images.(fname)(frameKeep) ;
-  end
+  [dag, pretrained] = ferPlusZoo(teacher) ;
+  assert(pretrained, 'loaded incorrect teacher model') ;
 
-  if ~exist('dag', 'var')
-		[dag, pretrained] = grimaces_zoo(opts.modelName, 0, 0, 0) ;
-    assert(pretrained, 'loaded incorrect model') ;
-  end
-
-  % remove losses
+  % remove losses and configure network to predict emotions
   lossLayers = arrayfun(@(x) isa(x.block, 'dagnn.Loss'), dag.layers) ;
   removables = {dag.layers(lossLayers).name} ;
   for ii = 1:numel(removables)
@@ -126,26 +98,25 @@ function imdb = buildImdb(teacher, varargin)
   end
 	dag.mode = 'test' ;
 	if numel(opts.gpus), gpuDevice(opts.gpus) ; dag.move('gpu') ; end
-
 	inVars = dag.getInputs() ;
 	assert(numel(inVars) == 1, 'too many inputs') ;
 
   % compute for first `limit` tracks
-  firstId = partitionImdb.images.id(1) ; % use first in partition as offset
-  numKeep = sum(partitionImdb.images.denseFramesWavIds <= firstId + opts.limit) ;
-  numIms = min(numel(partitionImdb.images.denseFrames), numKeep) ;
+  firstId = imdb.images.id(1) ;
+  numKeep = sum(imdb.images.denseFramesWavIds <= firstId + opts.limit) ;
+  numIms = min(numel(imdb.images.denseFrames), numKeep) ;
 	inVars = dag.getInputs() ;
 	assert(numel(inVars) == 1, 'too many inputs') ;
 
   logits = zeros(numIms, numEmotions, 'single') ;
 
-	fprintf('processing images with %s\n', opts.modelName) ;
+	fprintf('processing images with %s\n', teacher) ;
 	for ii = 1:batchSize:numIms
 		tic ;
 		batchStart = ii ;
 		batchEnd = min(batchStart+batchSize-1, numIms) ;
 		batch = batchStart:batchEnd ;
-    imPaths = fullfile(opts.faceDir, partitionImdb.images.denseFrames(batch)) ;
+    imPaths = fullfile(opts.faceDir, imdb.images.denseFrames(batch)) ;
 		data = getImageBatch(imPaths, dag) ;
 		dag.eval({inVars{1}, data}) ;
 		out = gather(squeeze(dag.vars(end).value)) ; % risky use of end variable
@@ -156,25 +127,17 @@ function imdb = buildImdb(teacher, varargin)
 					 ii, numIms, rate, 100 * ii/numIms, etaStr) ;
 	end
 
-  % save the logits alongside the wav files for easier processing during training
-  numWavs = numel(partitionImdb.images.name) ;
+  % save the logits alongside the wav files for easier processing
+  % when training
+  numWavs = numel(imdb.images.name) ;
   wavLogits = cell(1, numWavs) ;
   numLogits = min(numWavs, opts.limit) ;
   for ii = 1:numLogits
     fprintf('splitting logits into cells for wav %d/%d\n', ii, numLogits) ;
-    idx = partitionImdb.images.id(ii) ;
-    sel = find(partitionImdb.images.denseFramesWavIds == idx) ;
-    wavLogits(ii) = {logits(sel,:)} ;
+    idx = imdb.images.id(ii) ;
+    wavLogits(ii) = {logits(imdb.images.denseFramesWavIds == idx,:)} ;
   end
-
-  partitionImdb.wavLogits = wavLogits ;
-  imdb = partitionImdb ;
-	%fprintf('saving features to %s...', destPath) ; tic ;
-	%if ~exist(fileparts(destPath), 'dir')
-		%zs_mkdirRec(fileparts(destPath)) ;
-	%end
-	%save(destPath, '-struct', 'partitionImdb', '-v7.3') ;
-	%fprintf('done in %g (s)\n', toc) ;
+  imdb.wavLogits = wavLogits ;
 end
 
 % --------------------------------------------------------------------------
@@ -249,9 +212,13 @@ function imdb = addFramesToImdb(imdb, faceDir)
     fprintf('done in %g (s)\n', toc) ;
     dev_cache('numIms', numIms) ;
   end
-  keyboard
 
-  % need to order frames to match tracks
+  % We now arrange frames in cells such that each cell corresponds to one
+  % audio clip. Note that since the frames have been extracted at a lower
+  % frame rate than was used in the original dataset, there are now a small
+  % number of audio tracks that do not have any corresponding face frames
+  % (there 1217 such tracks).  These tracks are dropped for the distillation
+  % process.
   framePaths = cell(numIms, 1) ;
   wavIds = zeros(numIms, 1, 'single') ;
   numWavs = numel(imdb.images.name) ;
@@ -282,4 +249,15 @@ function imdb = addFramesToImdb(imdb, faceDir)
   drop = (wavIds == 0) ;
   wavIds(drop) = [] ;
   framePaths(drop) = [] ;
+
+  % finally, we ensure that the paths are relative
+  if ~strcmp(faceDir(end), '/')
+    faceDir = [faceDir '/'] ; % make certain that there is a trailing slash
+  end
+  % subtract absolute path to faceDir from all paths
+  framePathsRelative = cellfun(@(x) {erase(x, faceDir)}, framePaths) ;
+
+  % store corresponding frames on the imdb object
+  imdb.images.denseFrames = framePathsRelative ;
+  imdb.images.denseFramesWavIds =  wavIds ;
 end
