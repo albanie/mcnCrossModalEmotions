@@ -10,6 +10,7 @@ function [miniImdb,expDirs,valIdxSets] = run_cross_val(varargin)
   opts.numTargetEmotions = 6 ;
   opts.modality = 'visual' ;
   opts.refreshCkpts = false ;
+  opts.mnrfit = false ;
   opts.modelName = 'emovoxceleb-student' ;
   opts = vl_argparse(opts, varargin) ;
 
@@ -76,6 +77,12 @@ function [miniImdb,expDirs,valIdxSets] = run_cross_val(varargin)
     valIdx = valIdxSets{foldNum} ;
     faceLogits = imdb.faceLogits ;
 
+    % train the tiny classifier
+    expName = sprintf('%s-%s-foldNum-%d', opts.modelName, ...
+                                      opts.aggregator, foldNum) ;
+    expDir = fullfile(expRoot, expName) ;
+    expDirs{foldNum} = expDir ;
+
     switch opts.aggregator
       case 'mean1', aggregator = @(x) mean(x, 1) ;
       case 'max', aggregator = @(x) max(x, [], 1) ;
@@ -87,6 +94,20 @@ function [miniImdb,expDirs,valIdxSets] = run_cross_val(varargin)
     fusedLogits = vertcat(fusedLogits{:}) ; % form matrix
     fusedLogits = fusedLogits(:, 1:opts.numSrcEmotions) ;
     labels = imdb.tracks.(opts.labelType) ;
+
+    % generate mini imdb
+    miniImdb.labels = labels ;
+    miniImdb.fusedLogits = fusedLogits ;
+    miniImdb.images.set = imdb.tracks.set ;
+
+    if opts.mnrfit
+      trainLogits = double(fusedLogits(trainIdx(:),:)) ;
+      trainLabels = double(labels(trainIdx(:)))' ;
+      coefficients = mnrfit(trainLogits, trainLabels) ; %#ok
+      paramPath = fullfile(expDir, 'mnr-params.mat') ;
+      save(paramPath, 'coefficients') ;
+      continue ; % use as an alternative to SGD
+    end
 
     % define inputs
     x = Input() ; y = Input() ;
@@ -101,10 +122,6 @@ function [miniImdb,expDirs,valIdxSets] = run_cross_val(varargin)
     errorVar.name = 'error' ; % for consistency
     net = Net(loss, errorVar) ;
 
-    % generate mini imdb
-    miniImdb.labels = labels ;
-    miniImdb.fusedLogits = fusedLogits ;
-    miniImdb.images.set = imdb.tracks.set ;
     opts.train = struct() ;
     opts.train.gpus = [] ;
     opts.train.continue = ~opts.refreshCkpts ;
@@ -113,17 +130,12 @@ function [miniImdb,expDirs,valIdxSets] = run_cross_val(varargin)
     opts.train.learningRate = 0.001 ;
     opts.batchOpts = struct() ;
 
-    % train the tiny classifier
-    expName = sprintf('%s-%s-foldNum-%d', opts.modelName, ...
-                                      opts.aggregator, foldNum) ;
-    expDir = fullfile(expRoot, expName) ;
     [~,info] = cnn_train_autonn(net, miniImdb, ...
                       @(i,b) get_batch(i, b), ...
                       opts.train, 'expDir', expDir, ...
                       'train', trainIdx, 'val', valIdx) ;
     valAcc = 100 * (1 - min([info.val.error])) ;
     fprintf('%s: best val acc %.2f\n', expName, valAcc) ;
-    expDirs{foldNum} = expDir ;
   end
 end
 
