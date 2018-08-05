@@ -10,7 +10,9 @@ function ensure_compatibility(varargin)
    opts.modelDir = fullfile(vl_rootnn, 'data/models-import') ;
    opts = vl_argparse(opts, varargin) ;
 
-   publicModels = {'resnet50-ferplus', 'senet50-ferplus'} ;
+   publicModels = {'resnet50-ferplus', ...
+                   'senet50-ferplus', ...
+                   'emovoxceleb-student'} ;
 
    for ii = 1:numel(publicModels)
      modelName = publicModels{ii} ;

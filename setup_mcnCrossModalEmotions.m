@@ -10,7 +10,7 @@ function setup_mcnCrossModalEmotions()
 
   root = fileparts(mfilename('fullpath')) ;
   addpath(root, [root '/emoVoxCeleb']) ;
-  addpath([root '/exps'], [root '/misc']) ;
+  addpath([root '/teacher'], [root '/misc'], [root '/external']) ;
 
 % -----------------------------------
 function check_dependency(moduleName)
