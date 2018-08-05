@@ -15,6 +15,10 @@ function dag = emoVoxZoo(modelName, varargin)
 % Licensed under The MIT License [see LICENSE.md for details]
 
   opts.scratch = false ;
+  opts.lossType = 'hot-cross-ent' ;
+  opts.dropout = false ;
+  opts.numOutputs = 8 ;
+  opts.numSeconds = 4 ;
 	opts.modelDir = fullfile(vl_rootnn, 'data/models-import') ;
   opts = vl_argparse(opts, varargin) ;
 
@@ -41,17 +45,18 @@ function dag = emoVoxZoo(modelName, varargin)
     return
   end
 
-  dag = prepareFromDagNN(net, numOutputs) ;
+  dag = prepareFromDagNN(net, opts.numOutputs) ;
 	fprintf('\n-----------------------------------------------------\n') ;
 	fprintf('Initialising parameters from scratch!                  \n') ;
 	fprintf('-------------------------------------------------------\n') ;
 	dag.initParams() ;
 
   % configure the loss layers
-  dag = configureForRegression(dag, lossType, dropout, numOutputs) ;
+  dag = configureForRegression(dag, opts.lossType, ...
+                              opts.dropout, opts.numOutputs) ;
 
   % update the pooling layer for the given duration
-  dag = updatePooling(dag, numSeconds, modelName) ;
+  dag = updatePooling(dag, opts.numSeconds, modelName) ;
 	dag = fixInputVarnames(dag) ;
 
 % ----------------------------------------------
@@ -252,7 +257,8 @@ function dag = updatePooling(dag, numSeconds, modelName)
 	buckets.width = [100 200 300 400 500 600 700 800 900 1000] ;
 	p1 = buckets.pool((numSeconds * 100) == buckets.width) ;
   switch modelName
-    case {'vggvox_ident_net', 'vggm_bn_identif'}, layerName = 'pool6' ;
+    case {'vggvox_ident_net', 'vggm_bn_identif', 'emovoxceleb-student'}
+      layerName = 'pool6' ;
     case 'resnet_identif', layerName = 'pool_time' ;
     otherwise, error('modelName: %s not recognised\n', modelName) ;
   end
