@@ -4,11 +4,11 @@ function audio_benchmarks(varargin)
 %   model on external benchmarks.  For each dataset, it learns a
 %   classifier (consisting of a matrix and a bias followed by a softmax)
 %   which reweights the emotions of the student.  The size of this learned
-%   matrix is S x T, where S is the number of emotions predicted by the student
-%   and T is the number of emotions in the target dataset.  Since S
+%   matrix is S x T, where S is the number of emotions predicted by the
+%   student and T is the number of emotions in the target dataset.  Since S
 %   is 8 for models trained on EmoVoxCeleb, it essentially treats the
 %   predictions of the student as 8-dimensional "embeddings" and uses them
-%   to perform a constrained multinomial logistic regression.
+%   to perform a small multinomial logistic regression.
 %
 %   AUDIO_BENCHMARKS(..'name', value) accepts the following
 %   options:
@@ -20,11 +20,10 @@ function audio_benchmarks(varargin)
 %    The names of the datasets to evaluate, as a cell array.
 %
 %   `modelName` :: 'emovoxceleb-student'
-%    The name of the audio model to be evaluated.
-%
-%   `numEpochs' :: 50
-%    Out of terrible laziness, the classifier is fitted with SGD, but
-%    should be updated to IRLS or similar.
+%    The name of the audio model to be evaluated. Running with 'random'
+%    provides a useful sanity check (it should achieve an accuracy of
+%    between 0.15 and 0.2 (there are six target classes for the dataset
+%    above, so expected accuracy is 0.167).
 %
 %   `figDir` :: fullfile(vl_rootnn, 'data/affine-figs-audio-splits')
 %    The directory where the final figures should be stored.
@@ -34,7 +33,6 @@ function audio_benchmarks(varargin)
 
   opts.clobber = false ;
   opts.numEpochs = 50 ; % out of laziness
-  opts.mnrfit = false ;
   opts.datasets = {'rml', 'enterface'} ;
   opts.modelName = 'emovoxceleb-student' ;
   opts.figDir = fullfile(vl_rootnn, 'data/affine-figs-audio-splits') ;
@@ -62,7 +60,7 @@ function audio_benchmarks(varargin)
                'refreshCkpts', opts.clobber, ...
                'numSrcEmotions', numSrcEmotions, ...
                'numEpochs', opts.numEpochs, ...
-               'mnrfit', opts.mnrfit, ...
+               'mnrfit', true, ...
                'numTargetEmotions', numTargetEmotions, ...
                'modality', 'audio') ;
 
@@ -70,27 +68,13 @@ function audio_benchmarks(varargin)
     confSum = zeros(numTargetEmotions, numTargetEmotions) ;
 
     for ee = 1:numel(expDirs) % compute accuracy metrics
-
       expDir = expDirs{ee} ;
-			% compute desired metrics
       valIdx = valIdxSets{ee} ;
       X = miniImdb.fusedLogits(valIdx,:) ;
-
-      if opts.mnrfit
-        paramPath = fullfile(expDir, 'mnr-params.mat') ;
-        tmp = load(paramPath) ;
-        preds = mnrval(tmp.coefficients, double(X)) ;
-      else % SGD
-        bestEpoch = findBestEpoch(expDir, 'prune', false) ;
-        bestNet = fullfile(expDir, sprintf('net-epoch-%d.mat', bestEpoch)) ;
-        tmp = load(bestNet) ; net = Net(tmp.net) ;
-        w = net.getValue('prediction_filters') ;
-        w = reshape(w, numSrcEmotions, numTargetEmotions) ;
-        preds = X * w ;
-        b = net.getValue('prediction_biases') ;
-        preds = bsxfun(@plus, preds, b') ; % include biases
-      end
-
+      paramPath = fullfile(expDir, 'mnr-params.mat') ;
+      tmp = load(paramPath) ;
+      preds = mnrval(tmp.coefficients, double(X)) ;
+      keyboard
       labels = miniImdb.labels(valIdx) ;
       [~,cls] = max(preds, [], 2) ;
       matches = cls == labels' ;
@@ -99,7 +83,6 @@ function audio_benchmarks(varargin)
       confSum = confSum + confmat ;
       fprintf('(fold %d/%d) recomputed accuracy: %.1f\n', ...
             ee, numel(expDirs), 100 * acc) ;
-      acc = 100 * (1 - tmp.stats.val(end).error) ;
       fprintf('(fold %d/%d) accuracy for %s: %.1f\n', ee, numel(expDirs), ...
                                                opts.modelName, acc) ;
       foldAccs(ee) = acc ;
