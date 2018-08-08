@@ -6,6 +6,9 @@ function loadedImdb = fetch_emovoxceleb_imdb(teacher, varargin)
 %   the file containing the predictions as an imdb is fairly large and
 %   it takes quite a long time to load from disk.  This function uses
 %   global memory to keep the file cached to avoid slow reload times.
+%
+% Copyright (C) 2018 Samuel Albanie, Arsha Nagrani
+% Licensed under The MIT License [see LICENSE.md for details]
 
   opts.imdbDir = fullfile(vl_rootnn, 'data/xEmo18/storedFeats') ;
   opts = vl_argparse(opts, varargin) ;
@@ -40,7 +43,7 @@ end
 % ------------------------------------------------------------------
 function imdbPath = getImdbPath(imdbDir, teacher)
 % ------------------------------------------------------------------
-	template = '%s-logits' ;
+  template = '%s-logits' ;
 	template = [template '.mat'] ;
 	teacherLogits = sprintf(template, teacher) ;
 	imdbPath = fullfile(imdbDir, teacherLogits) ;
@@ -54,11 +57,11 @@ function imdb = buildImdb(teacher, varargin)
 %  teacher for almost all extracted frames of VoxCeleb (approx. 5 million
 %  in total).  This will take a long time on a single GPU.
 
-	opts.gpus = 1 ;
-  opts.limit = inf ; % for debugging
+	opts.gpus = 3 ;
+  opts.limit = inf ; % pick number smaller than inf for debugging
   batchSize = 128 ;
   numEmotions = 8 ;
-  opts.srcImdb = fullfile(vl_rootnn, 'data/voxceleb/imdb.mat') ;
+  opts.srcImdb = fullfile(vl_rootnn, 'data/emoVoxCeleb/imdb.mat') ;
   opts.imdbPath = fullfile(vl_rootnn, 'data/xEmo18/dense_imdb/imdb.mat') ;
   opts.featPath = fullfile(vl_rootnn, ...
                            'data/xEmo18/featImdbs', teacher, 'imdb.mat') ;
@@ -68,7 +71,7 @@ function imdb = buildImdb(teacher, varargin)
   [imdb, found] = dev_cache('imdbPlusDenseFrames') ;
   if ~found
     if exist(opts.imdbPath, 'file')
-      fprintf('loading imdb from memory...') ; tic ;
+      fprintf('loading imdb from disk...') ; tic ;
       imdb = load(opts.imdbPath) ;
       fprintf('done in %g s\n', toc) ;
     else
@@ -138,8 +141,6 @@ function imdb = buildImdb(teacher, varargin)
     wavLogits(ii) = {logits(imdb.images.denseFramesWavIds == idx,:)} ;
   end
   imdb.wavLogits = wavLogits ;
-
-  imdb = updateSubsetsAndTags(imdb) ;
 end
 
 % --------------------------------------------------------------------------
@@ -218,8 +219,9 @@ function imdb = addFramesToImdb(imdb, faceDir)
   % We now arrange frames in cells such that each cell corresponds to one
   % audio clip. Note that since the frames have been extracted at a lower
   % frame rate than was used in the original dataset, there are now a small
-  % number of audio tracks that do not have any corresponding face frames
-  % (there 1217 such tracks).  These tracks are dropped for the distillation
+  % number of audio tracks that do not have any corresponding face frames.
+  % There are also a small number of frames that are not registered to
+  % tracks (there 1217 such frames).  Both are dropped for the distillation
   % process.
   framePaths = cell(numIms, 1) ;
   wavIds = zeros(numIms, 1, 'single') ;
@@ -247,10 +249,19 @@ function imdb = addFramesToImdb(imdb, faceDir)
                ii, numWavs, rate, 100 * ii/numWavs, etaStr) ;
   end
 
-  % drop empty frames
-  drop = (wavIds == 0) ;
-  wavIds(drop) = [] ;
-  framePaths(drop) = [] ;
+  % drop tracks without frames and remove completely from imdb
+  wavsWithFrames = unique(wavIds) ;
+  allWavIds = 1:numWavs ;
+  dropWavs = ~ismember(allWavIds, wavsWithFrames) ; % 134 of these
+  fnames = fieldnames(imdb.images) ;
+  for ii = 1:numel(fnames)
+    imdb.images.(fnames{ii})(dropWavs) = [] ;
+  end
+
+  % drop "unclaimed" frames
+  dropUnclaimed = (wavIds == 0) ;
+  wavIds(dropUnclaimed) = [] ;
+  framePaths(dropUnclaimed) = [] ;
 
   % finally, we ensure that the paths are relative
   if ~strcmp(faceDir(end), '/')
@@ -262,67 +273,4 @@ function imdb = addFramesToImdb(imdb, faceDir)
   % store corresponding frames on the imdb object
   imdb.images.denseFrames = framePathsRelative ;
   imdb.images.denseFramesWavIds =  wavIds ;
-end
-
-% -----------------------------------------------------------
-function imdb = updateSubsetsAndTags(imdb)
-% -----------------------------------------------------------
-
-  % update sets to match Seeing Voices Hearing Faces splits
-  if ~isfield(imdb.images, 'identSet')
-    imdb.images.identSet = imdb.images.set ;
-  end
-
-	%fprintf('removing identities that start with E...') ; tic ;
-	unheardTest = cellfun(@(x) ismember(x(1), {'C', 'D', 'E'}), ...
-                                              imdb.images.name) ;
-	unheardVal = cellfun(@(x) ismember(x(1), {'A', 'B'}), imdb.images.name) ;
-	fprintf('found %d indentities beginning A-E, setting as unheard set...', ...
-                                        sum(unheardVal) + sum(unheardTest)) ;
-	fprintf('done in %g s\n', toc) ;
-
-	unheardSet = ones(1, numel(imdb.images.name)) ;
-	unheardSet(unheardVal) = 2 ;
-	unheardSet(unheardTest) = 3 ;
-	imdb.images.unheardSet = unheardSet ;
-
-  % note that "heard" may include a mixture of both heard and unheard -
-  % it simply means that not all identities are "unheard"
-  heardVal = imdb.images.identSet == 2 ;
-  heardTest = imdb.images.identSet == 3 ;
-
-	intersectSet = ones(1, numel(imdb.images.name)) ;
-	intersectSet(heardVal) = 4 ;
-	intersectSet(heardTest) = 5 ;
-	intersectSet(unheardVal) = 2 ;
-	intersectSet(unheardTest) = 3 ;
-	imdb.images.intersectSet = intersectSet ;
-
-  if isfield(imdb.images, 'set')
-    imdb.images = rmfield(imdb.images, 'set') ; % remove to avoid confusion
-  end
-  imdb = updateTags(imdb) ;
-end
-
-% -------------------------------------------------------
-function imdb = updateTags(imdb)
-% -------------------------------------------------------
-  fprintf('updating tags ...') ; tic ;
-  newTags = {'rawMaxEmoTags', 'rawMeanEmoTags'} ;
-  for ii = 1:numel(newTags)
-    newTag = newTags{ii} ;
-    if ~isfield(imdb, newTag)
-      switch newTag
-        case 'rawMeanEmoTags'
-          aggregator = @(x) mean(x, 1) ;
-        case 'rawMaxEmoTags'
-          aggregator = @(x) max(x, [], 1) ;
-        otherwise, error('unknown tag %s\n', newTag) ;
-      end
-      fused = cellfun(aggregator, imdb.wavLogits, 'uni', 0) ;
-      [~,tags] = cellfun(@max, fused) ;
-      imdb.(newTag) = tags ;
-    end
-  end
-	fprintf('done in %g s\n', toc) ;
 end
