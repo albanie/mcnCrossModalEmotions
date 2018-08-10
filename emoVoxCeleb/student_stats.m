@@ -19,38 +19,44 @@ function student_stats(varargin)
 %    If true, visualise the distriution of dominant predictions made by
 %    the teacher.
 %
+%   `ignore` :: {'fear', 'contempt', 'disgust'}
+%    For analysis purposes, certain partitions have very few samples
+%    of some of the rarer emotions.  Using `ignore`, it is possible to
+%    specify a list of emotions to drop from the visualisations if
+%    desired.
+%
+%   `teacher` :: 'senet50-ferplus'
+%    The name of the teacher model.
+%
+%   `student` :: 'emovoxceleb-student'
+%    The name of the stduent model.
+%
 % Copyright (C) 2018 Samuel Albanie, Arsha Nagrani
 % Licensed under The MIT License [see LICENSE.md for details]
 
   opts.refresh = false ;
   opts.visHist = false ;
-  opts.ignore = {'contempt', 'disgust'} ;
-  opts.figDir = fullfile(fileparts(mfilename('fullpath')), 'figs') ;
-  opts.cachePath = fullfile(vl_rootnn, ...
-                       'data/mcnCrossModalEmotions/cache/student-stats.mat') ;
   opts.partition = 'all' ;
+  opts.student = 'emovoxceleb-student' ;
+  opts.teacher = 'senet50-ferplus' ;
+  opts.ignore = {'fear', 'contempt', 'disgust'} ;
+  opts.figDir = fullfile(fileparts(mfilename('fullpath')), ...
+                                                       'emovoxceleb-figs') ;
+  opts.cachePath = fullfile(vl_rootnn, ...
+         'data/mcnCrossModalEmotions/cache/emovoxceleb-student-stats.mat') ;
   opts.expRoot = fullfile(vl_rootnn, '/data/xEmo18') ;
-  opts.teacher = 'senet50_ft-dag-distributions-CNTK-dropout-0.5-aug' ;
   opts = vl_argparse(opts, varargin) ;
 
-  if opts.refresh
-    modelPairs = getAudioModels('teacherType', 'CNTK') ;
-    modelPair = modelPairs{1} ;
-    modelName = modelPair{1} ; numEmotions = modelPair{2} ;
-    modelDir = fullfile(opts.expRoot, modelName) ;
-    featPath = compute_audio_feats_for_dataset(...
-                                    'targetDataset', 'emoceleb', ...
-                                    'teacher', teacher, ...
-                                    'modelDir', modelDir, ...
-                                    'clobber', true, ...
-                                    'manualEpoch', false, ...
-                                    'numEmotions', numEmotions) ;
-  else
-    % for now, this will be hardcoded.
-    featPath = fullfile(vl_rootnn, 'data/xEmo18/emoceleb_storedFeatsAudio/voxceleb-senet50_ft-dag-distributions-CNTK-dropout-0.5-aug-vggm_bn_identif-hot-cross-ent-scratch-1-4sec-8emo-wavLogits-agg-max-temp2-unbalanced-logspace-logits-epoch280.mat') ;
-  end
+  imdbDir = fullfile(vl_rootnn, 'data/mcnCrossModalEmotions', ...
+                        sprintf('cachedFeats-audio')) ;
+  featPath = fullfile(imdbDir, ...
+         sprintf('%s-emovoxceleb-feats.mat', opts.student)) ;
+  compute_audio_feats(featPath, 'modelName', opts.student, ...
+                                'targetDataset', 'emovoxceleb', ...
+                                'teacher', opts.teacher) ;
 
   stored = load(featPath) ;
+
   % note that confusingly, the student predictions are stored as
   % the faceLogits attribute.
   studentLogits = vertcat(stored.faceLogits{:}) ;
@@ -68,8 +74,8 @@ function student_stats(varargin)
     fprintf('done in %g s\n', toc) ;
   end
 
-  setIdx = 1:5 ;
-  keys = {'train', 'unheardVal', 'unheardTest', 'heardVal', 'heardTest'} ;
+  setIdx = 1:3 ;
+  keys = {'train', 'unheardVal', 'heardVal'} ;
   setMap = containers.Map(keys, setIdx) ;
 
   if ~strcmp(opts.partition, 'all')
@@ -83,7 +89,7 @@ function student_stats(varargin)
     fprintf('compute stats for %s (%d/%d)...\n', ...
                               partition, ii, numel(partitions)) ;
 
-    % compute mean average precision, using max logits as the target label
+    % compute AUC using max logits as the target label
     keep = (loadedImdb.images.intersectSet == setMap(partition)) ;
     normedLogits = vl_nnsoftmaxt(studentLogits, 'dim', 2) ;
     subsetLogits = normedLogits(keep,:) ;
@@ -95,9 +101,10 @@ function student_stats(varargin)
       if exist('zs_dispFig', 'file'), zs_dispFig ; end
     end
 
-    % compute AP per class and visualise PR
+    % compute AUC per class and visualise ROC
     if ~exist(opts.figDir, 'dir'), mkdir(opts.figDir) ; end
-    emotions = x.meta.emotions ;
+    net = emoVoxZoo(opts.student) ;
+    emotions = net.meta.classes.name ;
     auc = zeros(1,numel(emotions)) ;
     for jj = 1:numel(emotions)
       classIdx = jj ;

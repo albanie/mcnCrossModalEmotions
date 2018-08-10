@@ -15,10 +15,10 @@ function dag = emoVoxZoo(modelName, varargin)
 % Licensed under The MIT License [see LICENSE.md for details]
 
   opts.scratch = false ;
-  opts.lossType = 'hot-cross-ent' ;
   opts.dropout = false ;
   opts.numOutputs = 8 ;
   opts.numSeconds = 4 ;
+  opts.lossType = 'hot-cross-ent' ;
 	opts.modelDir = fullfile(vl_rootnn, 'data/models-import') ;
   opts = vl_argparse(opts, varargin) ;
 
@@ -39,6 +39,7 @@ function dag = emoVoxZoo(modelName, varargin)
   end
   net = load(modelPath) ;
   if ~opts.scratch
+    if isfield(net, 'net'), net = net.net ; end
     dag = dagnn.DagNN.loadobj(net) ;
     dag = fixInputVarnames(dag) ;
     fprintf('loaded pretrained %s model...\n', modelName) ;

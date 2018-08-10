@@ -1,6 +1,6 @@
 ## mcnCrossModalEmotions
 
-This module contains code in support of the paper [Emotion Recognition in Speech using Cross-Modal Transfer in the Wild](http://www.robots.ox.ac.uk/~vgg/research/cross-modal-emotions).
+This module contains code in support of the paper [Emotion Recognition in Speech using Cross-Modal Transfer in the Wild](http://www.robots.ox.ac.uk/~vgg/research/cross-modal-emotions). The experiments are implmented using the [MatConvNet](https://github.com/vlfeat/matconvnet) framework. PyTorch versions of the vision models will be available shortly.
 
 ### Installation
 
@@ -9,11 +9,11 @@ The easiest way to use this module is to install it with the `vl_contrib` packag
 ```
 vl_contrib('install', 'mcnCrossModalEmotions') ;
 vl_contrib('setup', 'mcnCrossModalEmotions') ;
-```  
+```
 
 ### Dependencies
 
-mcnCrossModalEmotions requires the following module (which will be downloaded automatically):
+mcnCrossModalEmotions requires a working [MatConvNet](https://github.com/vlfeat/matconvnet) installation, and the following modules (which will be downloaded automatically):
 
 * [mcnDatasets](https://github.com/albanie/mcnDatasets) - dataset helpers for MatConvNet
 * [autonn](https://github.com/vlfeat/autonn) - autodiff for MatConvNet
