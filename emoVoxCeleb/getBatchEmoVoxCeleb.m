@@ -1,21 +1,24 @@
 function inputs = getBatchEmoVoxCeleb(opts, useGpu, imdb, batch)
+%GETBATCHEMOVOXCELEB get a batch of data from EmoVoxCeleb
+%   INPUTS = GETBATCHEMOVOXCELEB(OPTS, USEGPU, IMDB, BATCH) fetches
+%   the samples from EmoVoxCeleb (found in IMDB) corresponding to the
+%   indices specified in BATCH. USEGPU is used to denote whether the
+%   audio samples should be loaded onto the GPU.  OPTS is a structure
+%   with settings for the preprocessing.
+%
+% Copyright (C) 2018 Samuel Albanie, Arsha Nagrani
+% Licensed under The MIT License [see LICENSE.md for details]
 
   images = imdb.images.name(batch) ;
   logits = imdb.wavLogits(batch) ;
   isVal = ~isempty(batch) && imdb.images.set(batch(1)) ~= 1  ;
-  if opts.fixedSegments
-    timeOffsets = imdb.images.timeOffset(batch) ;
-  else
-    timeOffsets = [] ;
-  end
+  timeOffsets = [] ;
 
-  if ~isVal
-    % training
+  if ~isVal % training
     [im,lgo] = cnn_get_batch_wav_emo(images, imdb.wavDir, opts, logits, ...
                                 timeOffsets, ...
                                 'prefetch', nargout == 0)  ;
-  else
-    % validation: disable data augmentation
+  else % validation: disable data augmentation
     [im,lgo] = cnn_get_batch_wav_emo(images, imdb.wavDir, opts, logits, ...
                                 timeOffsets, ...
                                 'prefetch', nargout == 0, ...
@@ -26,28 +29,18 @@ function inputs = getBatchEmoVoxCeleb(opts, useGpu, imdb, batch)
     if useGpu, im = gpuArray(im) ; end
     lgo = lgo(:,:,1:opts.numPredEmotions,:) ; % select relevant emotions
     inputs = {'data', im} ;
-    %labels = imdb.images.labels(batch)  ;
     [~, maxLabel] = max(lgo, [], 3) ;
     switch opts.lossType
       case 'softmaxlog'
         inputs = [inputs {'maxLabel', maxLabel}] ;
       case 'euclidean'
-        % NOTE: currently, resampling is preferred to re-weighting
         weights = ones(1, 1, 1, numel(batch)) ; % no re-weighting required
-        %if opts.fixedSegments
-          %weights = ones(1, 1, 1, numel(batch)) ; % no re-weighting required
-        %else
-          %instanceWeightReference = 1 ./ imdb.meta.ratios_temperature1 ;
-          %weights = instanceWeightReference(maxLabel) ;
-          %weights = reshape(weights, 1, 1, 1, numel(batch)) ;
-        %end
         inputs = [inputs {'logitTarget', lgo, 'instanceWeights', ...
                                 weights, 'maxLabel', maxLabel}] ;
       case 'hot-cross-ent'
         inputs = [inputs {'logitTarget', lgo, 'maxLabel', maxLabel}] ;
       otherwise, error('unrecognised loss type: %s\n', opts.lossType) ;
     end
-    %inputs = {'data', im, 'logitTarget', lgo, 'maxLabel', maxLabel, 'instanceWeights', 1} ;
   end
 
 % ---------------------------------------------------------------------------
