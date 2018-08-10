@@ -1,48 +1,100 @@
 function [net, info] = run_distillation(varargin)
+%RUN_DISTILLATION - run distillation process to train student
+%   [NET, INFO] = RUN_DISTILLATION - trains a student to match the
+%   predictions of a teacher network, as described in:
+%
+%     S. Albanie, A. Nagrani, A. Vedaldi, A. Zisserman,
+%     Emotion Recognition in Speech using Cross-Modal Transfer
+%     in the Wild, ACM Multimedia 2018
+%
+%   RUN_DISTILLATION(..'name', value) accepts the following options:
+%
+%   `gpus` :: 2
+%    The gpu device to use for processing.
+%
+%   `cont` :: true
+%    Whether to restart training from a previous checkpoint when
+%    one is available.
+%
+%   `miniVal` :: 0.2
+%    Can be used to only perform validation on a subset of the full
+%    validation set to reduce computational cost.
+%
+%   `numSeconds` :: 4
+%    The duration of the audio segment to be processed by the student.
+%
+%   `batchSize` :: 64
+%    The batch size used by the student during training.
+%
+%   `numEpochs` :: 250
+%    While an "epoch" traditionally corresponds to a full pass over the
+%    training set, this option can be combined with the `miniEpochRatio`
+%    to specify the number of "mini-epochs", which are subsamples of the
+%    full training data.
+%
+%   `miniEpochRatio` :: 0.2
+%    The proportion of the data to use in each "mini-epoch".
+%
+%   `numPredEmotions` :: 8
+%    The number of emotions predicted by the student network - can be up
+%    to 8 (the number predicted by the teacher).
+%
+%   `fromScratch` :: true
+%    Randomly initialise the weights of the student.
+%
+%   `logitAggregator` :: 'max'
+%    The mechanism used to combine frame-level predictions from the teacher
+%    to provide a target for the student.
+%
+%   `teacher` :: 'senet50-ferplus'
+%    The name of the teacher model.
+%
+%   `student` :: 'emovoxceleb-student'
+%    The name of the student model.
+%
+%   `lossType` :: 'hot-cross-ent'
+%    The type of loss to be used for distillation (can also be Euclidean
+%    or softmaxlog).
+%
+%   `temperature` :: 2
+%    The temperature used by the softmax in the "hot" cross entropy loss.
+%
+%   `learningRate` :: logspace(-4, -5, opts.numEpochs)
+%    The learning rate used by the student.
+%
+%   `wavDir` :: fullfile(vl_rootnn, 'data/ramdisk/voxceleb_all')
+%    Directory containing the wavfiles of VoxCeleb.
+%
+% Copyright (C) 2018 Samuel Albanie, Arsha Nagrani
+% Licensed under The MIT License [see LICENSE.md for details]
 
   opts.gpus = 2 ;
   opts.cont = true ;
   opts.miniVal = 0.2 ;
-  opts.evaluate = 0 ;
-  opts.temperature = 2 ;
   opts.numSeconds = 4 ;
   opts.batchSize = 64 ;
-  opts.numEpochs = 300 ; % technically, this the number of "mini" epochs
+  opts.numEpochs = 300 ;
+  opts.miniEpochRatio = 0.05 * numel(opts.gpus) ;
   opts.numPredEmotions = 8 ;
   opts.fromScratch = true ;
-  opts.fixedSegments = false ; % essentially disables time-based augmentation
   opts.logitAggregator = 'max' ;
 	opts.datasetName = 'voxceleb' ;
-  opts.parameterServer = 'tmove' ;
-  %opts.numSampledEmotions = 4 ; % only used for sampling
-  %opts.samplerTags = 'maxEmoTags' ;
   opts.teacher = 'senet50-ferplus' ;
   opts.student = 'emovoxceleb-student' ;
-  %opts.subsetField = 'intersectSet' ;
   opts.lossType = 'hot-cross-ent' ;
+  opts.temperature = 2 ;
 	opts.learningRate = logspace(-4, -5, opts.numEpochs) ;
+  opts.parameterServer = 'tmove' ;
   opts.wavDir = fullfile(vl_rootnn, 'data/ramdisk/voxceleb_all') ;
   opts = vl_argparse(opts, varargin) ;
-
-  opts.miniEpochRatio = 0.05 * numel(opts.gpus) ; % run full heat
-
-	opts.bn = true ;
-	opts.numAugments = 1 ;
-	opts.finetune = false ;
-	opts.meanType = 'image' ; % 'pixel' | 'image'
-	opts.transformation = 'I' ;
-	opts.batchNormalization = true ;
-	opts.imageSize = [512, opts.numSeconds * 100] ;
-	opts.dataDir = fullfile('data', opts.datasetName) ;
 
   % hack to avoid clearing persistent memory issue
   imdb = fetch_emovoxceleb_imdb(opts.teacher) ;
 
 	student = sprintf('%s-%s', opts.student, opts.lossType) ;
 	if opts.fromScratch, student = [student '-scratch'] ; end
-  expName = sprintf('%s-%s-%s-%dsec-%demo-agg-%s', ...
-                    opts.datasetName, opts.teacher, ...
-                    student, opts.numSeconds, ...
+  expName = sprintf('voxceleb-%s-%s-%dsec-%demo-agg-%s', ...
+                    opts.teacher, student, opts.numSeconds, ...
                     opts.numPredEmotions, opts.logitAggregator) ;
 
 	opts.expDir = fullfile(vl_rootnn, 'data/xEmo18',  expName) ;
@@ -74,7 +126,6 @@ function [net, info] = run_distillation(varargin)
                  'lossType', opts.lossType, ...
                  'numSeconds', opts.numSeconds, ...
                  'numOutputs', opts.numPredEmotions) ;
-
 	net.meta.augmentation.transformation = 'I' ;
 	net.meta.audio = opts.audio ;
 
@@ -82,14 +133,10 @@ function [net, info] = run_distillation(varargin)
 %                                                              Prepare data
 % -------------------------------------------------------------------------
 	imdb.wavDir = opts.wavDir ;
-  numEpochs = opts.numEpochs ;
-  %imdb.images.(opts.subsetField)(imdb.images.(opts.subsetField) == 4) = 1 ;
   trainSamples = find(imdb.images.set == 1) ;
-  %trainSamples  = subsampler(imdb, opts.numSampledEmotions, 1, opts) ;
   valSamples = find(imdb.images.set == 2) ;
 
-  % for efficiency, it can be helpful to only use a portion of the
-  % validation set
+  % for efficiency, it can be helpful to only use a portion of the val set
   if opts.miniVal < 1
     rng(0) ;
     pick = randsample(numel(valSamples), ...
@@ -98,9 +145,6 @@ function [net, info] = run_distillation(varargin)
   end
 
   % print summary
-  %fprintf('training/validating using the %s partition\n', opts.subsetField) ;
-  %fprintf('experiment stats: (%d emotions, %d secs) \n', ...
-                                 %opts.numSampledEmotions, opts.numSeconds) ;
   fprintf('training network with balanced train/val subsets...\n') ;
   fprintf('training samples: %d \n', numel(trainSamples)) ;
   fprintf('val samples: %d \n', numel(valSamples)) ;
@@ -120,7 +164,7 @@ function [net, info] = run_distillation(varargin)
 	[net, info] = trainfn(net, imdb, getBatchFn(opts, meta), ...
 		'learningRate', opts.learningRate, ...
 		'batchSize', opts.batchSize,...
-		'numEpochs', numEpochs, ...
+		'numEpochs', opts.numEpochs, ...
     'train', trainSamples, ...
     'val', valSamples, ...
     'continue', opts.cont, ...
@@ -130,35 +174,6 @@ function [net, info] = run_distillation(varargin)
     'parameterServer', struct('method', opts.parameterServer), ...
     'extractStatsFn', @extractStats) ;
 end
-
-% ----------------------------------------------------------------------------
-%function sampledIdx = subsampler(imdb, numEmotions, subsetIdx, opts)
-% ----------------------------------------------------------------------------
-%  tags = imdb.(opts.samplerTags)(imdb.images.(opts.subsetField) == subsetIdx) ;
-%  counts = histcounts(tags, 0.5:numEmotions+0.5) ;
-%  samplesPerClass = round((max(counts) + min(counts)) / 4) ;
-%  idx = 1 ;
-%  fprintf('------------------------------------------------------\n') ;
-%  fprintf('QUARTER: Subsampling to highest emo bin: %d tracks (%s)\n', ...
-%          samplesPerClass, imdb.meta.emotions{idx}) ;
-%  fprintf('------------------------------------------------------\n') ;
-%  sampled = zeros(samplesPerClass, numEmotions) ;
-%
-%  for ii = 1:numEmotions
-%    candidates = find(imdb.(opts.samplerTags) == ii & ...
-%                         imdb.images.(opts.subsetField) == subsetIdx) ;
-%    fprintf('sampling %d from %d (%s)\n', samplesPerClass, ...
-%            numel(candidates), imdb.meta.emotions{ii}) ;
-%    if samplesPerClass > numel(candidates)
-%      % sample with replacement
-%      picks = randsample(numel(candidates), samplesPerClass, true) ;
-%    else
-%      picks = randsample(numel(candidates), samplesPerClass) ;
-%    end
-%    sampled(:,ii) = candidates(picks) ;
-%  end
-%  sampledIdx = sampled(:)' ;
-%end
 
 % -------------------------------------------------------------------------
 function stats = extractStats(stats, net)
@@ -188,19 +203,15 @@ end
 function fn = getBatchFn(opts, meta)
 % -------------------------------------------------------------------------
 	useGpu = numel(opts.gpus) > 0 ;
+	bopts.numAugments = 1 ;
 	bopts.numThreads = opts.numFetchThreads ;
-	bopts.imageSize = opts.imageSize ;
-	bopts.averageImage = [] ; % will be overwritten with zero if inpunorm is used
-  bopts.fixedSegments = opts.fixedSegments ;
+	bopts.imageSize = [512, opts.numSeconds * 100] ;
+	bopts.averageImage = [] ; % overwritten with zero when inputnorm is used
 	bopts.transformation = meta.augmentation.transformation ;
-	bopts.numAugments = opts.numAugments ;
   bopts.numPredEmotions = opts.numPredEmotions ;
-  %bopts.subsetField = opts.subsetField ;
   bopts.logitAggregator = opts.logitAggregator ;
   bopts.lossType = opts.lossType ;
-  %bopts.rawLogits = opts.rawLogits ;
 	bopts.meta = meta ;
-  %fn = @(x,y) getDagNNBatchAudio(bopts,useGpu,x,y) ;
   fn = @(x,y) getBatchEmoVoxCeleb(bopts,useGpu,x,y) ;
 end
 
