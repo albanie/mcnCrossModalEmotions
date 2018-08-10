@@ -68,23 +68,23 @@ We find that the student is able to learn a weak classifier for the dominant emo
 
 **Anger**
 
-<img src="emoVoxCeleb/emovoxceleb-figs/anger-train.jpg" width="200" /> <img src="emoVoxCeleb/emovoxceleb-figs/anger-heardTest.jpg" width="200" /> <img src="emoVoxCeleb/emovoxceleb-figs/anger-unheardTest.jpg" width="200" />
+<img src="emoVoxCeleb/emovoxceleb-figs/anger-train.jpg" width="200" /> <img src="emoVoxCeleb/emovoxceleb-figs/anger-heardVal.jpg" width="200" /> <img src="emoVoxCeleb/emovoxceleb-figs/anger-unheardVal.jpg" width="200" />
 
 **Happiness**
 
-<img src="emoVoxCeleb/emovoxceleb-figs/happiness-train.jpg" width="200" /> <img src="emoVoxCeleb/emovoxceleb-figs/happiness-heardTest.jpg" width="200" /> <img src="emoVoxCeleb/emovoxceleb-figs/happiness-unheardTest.jpg" width="200" />
+<img src="emoVoxCeleb/emovoxceleb-figs/happiness-train.jpg" width="200" /> <img src="emoVoxCeleb/emovoxceleb-figs/happiness-heardVal.jpg" width="200" /> <img src="emoVoxCeleb/emovoxceleb-figs/happiness-unheardVal.jpg" width="200" />
 
 **Neutral**
 
-<img src="emoVoxCeleb/emovoxceleb-figs/neutral-train.jpg" width="200" /> <img src="emoVoxCeleb/emovoxceleb-figs/neutral-heardTest.jpg" width="200" /> <img src="emoVoxCeleb/emovoxceleb-figs/neutral-unheardTest.jpg" width="200" />
+<img src="emoVoxCeleb/emovoxceleb-figs/neutral-train.jpg" width="200" /> <img src="emoVoxCeleb/emovoxceleb-figs/neutral-heardVal.jpg" width="200" /> <img src="emoVoxCeleb/emovoxceleb-figs/neutral-unheardVal.jpg" width="200" />
 
 **Surprise**
 
-<img src="emoVoxCeleb/emovoxceleb-figs/surprise-train.jpg" width="200" /> <img src="emoVoxCeleb/emovoxceleb-figs/surprise-heardTest.jpg" width="200" /> <img src="emoVoxCeleb/emovoxceleb-figs/surprise-unheardTest.jpg" width="200" />
+<img src="emoVoxCeleb/emovoxceleb-figs/surprise-train.jpg" width="200" /> <img src="emoVoxCeleb/emovoxceleb-figs/surprise-heardVal.jpg" width="200" /> <img src="emoVoxCeleb/emovoxceleb-figs/surprise-unheardVal.jpg" width="200" />
 
 **Sadness**
 
-<img src="emoVoxCeleb/emovoxceleb-figs/sadness-train.jpg" width="200" /> <img src="emoVoxCeleb/emovoxceleb-figs/sadness-heardTest.jpg" width="200" /> <img src="emoVoxCeleb/emovoxceleb-figs/sadness-unheardTest.jpg" width="200" />
+<img src="emoVoxCeleb/emovoxceleb-figs/sadness-train.jpg" width="200" /> <img src="emoVoxCeleb/emovoxceleb-figs/sadness-heardVal.jpg" width="200" /> <img src="emoVoxCeleb/emovoxceleb-figs/sadness-unheardVal.jpg" width="200" />
 
 
 Note that since the dataset is highly unbalanced, some of the emotions have very few samples - the remaining emotions (fear, disgust and contempt) are rarely predicted as dominant by the teacher on the validation sets. 
