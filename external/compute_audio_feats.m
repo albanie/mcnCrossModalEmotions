@@ -1,20 +1,46 @@
 function destPath = compute_audio_feats(destPath, varargin)
+%COMPUTE_AUDIO_FEATS - compute audio features
+%  DESTPATH = COMPUTE_AUDIO_FEATS(DESTPATH, VARARGIN) computes the features
+%  produced by an audio model and stores them to DESTPATH.
+%
+%   EMO_BENCHMARKS(..'name', value) accepts the following
+%   options:
+%
+%   `gpus` :: 1
+%    The gpu device to use for processing.
+%
+%   `limit` :: inf
+%    Limit the number of samples processed (only used for debugging).
+%
+%   `teacher` :: ''
+%    The name of the teacher model (only required for computing features
+%    on EmoVoxCeleb).
+%
+%   `student` :: ''
+%    The name of the audio model to be evaluated.
+%
+%   `clobber` :: false
+%    Overwrite existing cached features if already present.
+%
+%   `numEmotions` :: 8
+%    The number of emotions predicted by the audio model.
+%
+%   `targetDataset` :: 'rml'
+%    The dataset for which the features will be computed.
+%
+% Copyright (C) 2018 Samuel Albanie, Arsha Nagrani
+% Licensed under The MIT License [see LICENSE.md for details]
 
 	opts.gpus = 1 ;
   opts.limit = inf ;
-  opts.clobber = false ;
-  opts.manualEpoch = 0 ;
-  opts.densePreds = false ;
-  opts.numEmotions = 8 ;
-  opts.numSeconds = 4 ;
   opts.teacher = '' ;
-  opts.fixedSegments = false ;
   opts.modelName = '' ;
-  opts.scratch = false ;
+  opts.clobber = false ;
+  opts.numEmotions = 8 ;
   opts.targetDataset = 'rml' ;
   opts = vl_argparse(opts, varargin) ;
 
-  assert(~isempty(opts.modelName), 'a model dir must be specified') ;
+  assert(~isempty(opts.modelName), 'a model must be specified') ;
 
 	buckets.pool = [2 5 8 11 14 17 20 23 27 30] ;
 	buckets.width  = [100 200 300 400 500 600 700 800 900 1000] ;
@@ -23,7 +49,7 @@ function destPath = compute_audio_feats(destPath, varargin)
      sprintf('data/xEmo18/%s_imdb/imdb.mat', opts.targetDataset)) ;
 
   if ~strcmp(opts.modelName, 'random')
-		dag = emovoxZoo(opts.modelName) ;
+		dag = emoVoxZoo(opts.modelName) ;
 	end
 
   if exist(destPath, 'file') && ~opts.clobber
@@ -45,16 +71,9 @@ function destPath = compute_audio_feats(destPath, varargin)
     case 'rml'
       opts.dataDir = fullfile(vl_rootnn, 'data/datasets/rml') ;
       getImdb = @(x) getRmlImdb(x) ;
-    case 'emoceleb'
-      % NOTE: use the prepared imdb, which has been modified to work with the
-      % interface used for feature computation
-      %imdbPath = '/scratch/shared/nfs1/albanie/mcn/contrib-matconvnet/xEmo18/emoceleb_mini_imdb/imdb.mat' ;
-      assert(~strcmp(opts.teacher, ''), 'teacher must be set') ;
-
-      opts.dataDir = '' ; % use the same interface
-      getImdb = @(x) fetch_emoceleb_imdb('duration', opts.numSeconds, ...
-                                         'fixedSeg', opts.fixedSegments, ...
-                                         'teacher', opts.teacher) ;
+    case 'emovoxceleb'
+      dataDir = '/dev/shm/albanie/voxceleb_all' ; % TODO: fix/avoid hardcoding
+      getImdb = @(x) fetch_mod_emovoxceleb_imdb(opts.teacher, dataDir) ;
     otherwise, error('unknown dataset %s\n', opts.targetDataset) ;
   end
 
@@ -71,15 +90,11 @@ function destPath = compute_audio_feats(destPath, varargin)
   % compute for first `limit` tracks
   firstId = imdb.tracks.id(1) ; % use first in partition as offset
   numKeep = sum(imdb.tracks.id <= firstId + opts.limit) ; % number of tracks
-  if opts.densePreds
-    disp('not yet implemented') ; keyboard
-  else
-    numIms = numKeep ;
-  end
+  numIms = numKeep ;
 
   if strcmp(opts.modelName, 'random')
     logits = randn(numIms, opts.numEmotions, 'single') ;
-    storeFaceLogitImdb(imdb, logits, numIms, destPath) ;
+    storeAudioLogitImdb(imdb, logits, numIms, destPath) ;
     return
   end
 
@@ -119,12 +134,12 @@ function destPath = compute_audio_feats(destPath, varargin)
        fprintf('empty audio clip\n') ; keyboard
      end
 	end
-  storeFaceLogitImdb(imdb, logits, numIms, destPath) ;
+  storeAudioLogitImdb(imdb, logits, numIms, destPath) ;
 	if numel(opts.gpus), dag.move('cpu') ; end
 end
 
 % ------------------------------------------------------------------------
-function storeFaceLogitImdb(imdb, logits, numIms, destPath)
+function storeAudioLogitImdb(imdb, logits, numIms, destPath)
 % ------------------------------------------------------------------------
   % use the term faceLogit, even for stored audio
   faceLogits = cell(1, numIms) ;
@@ -168,3 +183,18 @@ function inp = test_getinput(image, buckets)
   if rstart == 0, rstart = 1 ; end
 	inp(:,:) = gpuArray(single(nSPEC(:,rstart:rstart+rsize-1))) ;
 end
+
+% -----------------------------------------------------------------------------
+function imdb = fetch_mod_emovoxceleb_imdb(teacher, dataDir)
+% -----------------------------------------------------------------------------
+%FETCH_MOD_EMOVOXCELEB_IMDB fetch a modified version of EmoVoxCeleb imdb
+%  IMDB = FETCH_MOD_EMOVOXCELEB_IMDB(TEACHER) fetches a version of the
+%  the EmoVoxCeleb that is compatible with audio feature construction.
+    assert(~strcmp(teacher, ''), 'teacher must be set') ;
+    imdb = fetch_emovoxceleb_imdb(teacher) ; % fetch original
+
+    % conform to the other IMDB interfaces
+    imdb.tracks.id = imdb.images.id ;
+    imdb.tracks.wavPaths = fullfile(dataDir, imdb.images.name) ;
+end
+
