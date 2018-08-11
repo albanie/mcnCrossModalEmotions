@@ -139,6 +139,8 @@ function student_stats(varargin)
 
     % compute mean average precision for emotions that are represented
     representedEmotions = unique(teacherMaxLogits) ;
+    drop = find(ismember(emotions, opts.ignore)) ;
+    representedEmotions(ismember(representedEmotions, drop)) = [] ;
     meanAuc = mean(auc(representedEmotions)) ;
     fprintf('meanAuc: %g\n', meanAuc) ;
     if ~isfield(cache, partition)
