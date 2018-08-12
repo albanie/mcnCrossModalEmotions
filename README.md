@@ -20,23 +20,9 @@ mcnCrossModalEmotions requires a working [MatConvNet](https://github.com/vlfeat/
 
 ### Overview
 
-The high level idea of this work is to see if there is some common signal between the emotional content of a speaker's facial expression (or at least, how human annotators would label their expression) and the emotional content of their speech.  
-
-Emotion is a notoriously noisy visual (or audio) signal for machine learning tasks. This is due to a number of reasons, but perhaps the most important one is that there is no "ground truth" (we rarely know the true emotional state of the subject, given only a picture of their face or a segment of their speech).  Despite this, it is possible to get a reasonably high level of agreement among human annotators when labelling facial expressions with emotion and we can use this as a flawed, but potentially still useful proxy for emotional state (predicting these human annotator labels is what we refer to as "emotion recognition").  
-
-In this work we first train a CNN in a fully supervised manner to perform emotion recognition from faces.  We do this by taking a state-of-the-art image classification model (a [Squeeze-and-Excitation](https://arxiv.org/abs/1709.01507) network) that has been pretrained on a large face verification task ([VGGFace2](https://www.robots.ox.ac.uk/~vgg/data/vgg_face2/vggface2.pdf)) and then fine tune it to predict emotions on the much smaller [FERPlus](https://github.com/Microsoft/FERPlus) dataset. We then use the technique of cross-modal distillation popularised by [1] which aims to "distill" the knowledge of the facial expression model (the "teacher") across modalities to a "student" model that only gets to hear the speech of the speaker, but does not see their face. We apply this distillation process across a large collection of unlabelled videos (the [VoxCeleb](http://www.robots.ox.ac.uk/~vgg/data/voxceleb/) dataset), by making emotion predictions for faces in the video clips with the teacher model and training a student model to match the distribution of teacher predictions.
-
-
-Broadly, the aim is to try to see if there is enough common signal between the facial expression and voice to train the student  to match the outputs of the teacher.   If successful, this would allow us to train a model for speech recognition with only access to labelled facial expressions in images. 
-
-
-**References**:
-
-[1] Gupta, Saurabh, Judy Hoffman, and Jitendra Malik. "Cross modal distillation for supervision transfer." Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition. 2016 ([link](https://arxiv.org/abs/1507.00448))
-
+The [project page](http://www.robots.ox.ac.uk/~vgg/research/cross-modal-emotions/) has a high level overview of the work.
 
 ### Teacher Training
-
 
 **Usage**: To use the teacher code, running [exps/bencmark\_ferplus\_models.m](exps/benchmark_ferplus_models.m) will download the pretrained teacher models and data and launch an evaluation function.  New teacher models can be trained with the [exps/ferplus\_baselines.m](exps/ferplus_baselines.m) function.
 
@@ -50,9 +36,6 @@ The following pretrained teacher CNNs are available:
 | senet50-ferplus | [VGGFace2](https://arxiv.org/abs/1710.08092) | [Fer2013+](https://github.com/Microsoft/FERPlus) | 89.8 | 88.8 |
 
 More details relating to the models can be found [here](http://www.robots.ox.ac.uk/~albanie/mcn-models.html#cross-modal-emotion).
-
-
-
 
 ### Distillation
 
