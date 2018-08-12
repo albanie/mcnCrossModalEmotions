@@ -57,7 +57,7 @@ function destPath = compute_audio_feats(destPath, varargin)
     return
   end
 
-  switch opts.targetDataset
+  switch opts.targetDataset % TODO: fix/avoid hardcoding of data dirs
     case 'afew'
       opts.dataDir = fullfile(vl_rootnn, 'data/datasets/emotiw2016') ;
       getImdb = @(x) getAfewImdb(x, 'dropTracksWithNoDets', 1) ;
@@ -72,7 +72,7 @@ function destPath = compute_audio_feats(destPath, varargin)
       opts.dataDir = fullfile(vl_rootnn, 'data/datasets/rml') ;
       getImdb = @(x) getRmlImdb(x) ;
     case 'emovoxceleb'
-      dataDir = '/dev/shm/albanie/voxceleb_all' ; % TODO: fix/avoid hardcoding
+      dataDir = fullfile(vl_rootnn, 'data/datasets/voxceleb1/voxceleb_all') ;
       getImdb = @(x) fetch_mod_emovoxceleb_imdb(opts.teacher, dataDir) ;
     otherwise, error('unknown dataset %s\n', opts.targetDataset) ;
   end

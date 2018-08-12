@@ -190,9 +190,6 @@ function dag = prepareFromDagNN(net, numOutputs)
 %  network for classification by removing any old loss layers
 %  and ensuring that the final fully connected "prediction"
 %  layer has the correct dimensions.
-%
-% Copyright (C) 2016 Samuel Albanie
-% Licensed under The MIT License [see LICENSE.md for details]
 
   % load stored network into memory
   dag = dagnn.DagNN.loadobj(net) ;

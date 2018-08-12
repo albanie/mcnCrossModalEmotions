@@ -272,5 +272,5 @@ function imdb = addFramesToImdb(imdb, faceDir)
 
   % store corresponding frames on the imdb object
   imdb.images.denseFrames = framePathsRelative ;
-  imdb.images.denseFramesWavIds =  wavIds ;
+  imdb.images.denseFramesWavIds = wavIds ;
 end
