@@ -77,9 +77,12 @@ Note that since the dataset is highly unbalanced, some of the emotions have very
 If you find the models or code useful, please consider citing:
 
 ```
-Albanie, Samuel, and Nagrani, Arsha and Vedaldi, Andrea, and Zisserman, Andrew,
-"Emotion Recognition in Speech using Cross-Modal Transfer in the Wild." 
-ACM Multimedia, 2018. 
+@InProceedings{Albanie18a,
+    title = "Emotion Recognition in Speech using Cross-Modal Transfer in the Wild",
+    author = "Albanie, S. and Nagrani, A. and Vedaldi, A. and Zisserman, A.",     
+    booktitle = "ACM Multimedia",
+    year = "2018",
+}
 ```
 
 References for the related datasets are the FER2013+ dataset:
