@@ -1,6 +1,6 @@
 ## mcnCrossModalEmotions
 
-This module contains code in support of the paper [Emotion Recognition in Speech using Cross-Modal Transfer in the Wild](http://www.robots.ox.ac.uk/~vgg/research/cross-modal-emotions). The experiments are implmented using the [MatConvNet](https://github.com/vlfeat/matconvnet) framework. PyTorch versions of the vision models will be available shortly.
+This module contains code in support of the paper [Emotion Recognition in Speech using Cross-Modal Transfer in the Wild](http://www.robots.ox.ac.uk/~vgg/research/cross-modal-emotions). The experiments are implemented using the [MatConvNet](https://github.com/vlfeat/matconvnet) framework. PyTorch versions of the vision models will be available shortly.
 
 ### Installation
 
