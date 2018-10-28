@@ -6,11 +6,21 @@ function setup_mcnCrossModalEmotions()
 % Licensed under The MIT License [see LICENSE.md for details]
 
   check_dependency('mcnDatasets') ;
+  check_dependency('mcnExtraLayers') ;
   check_dependency('autonn') ;
+  check_dependency('VGGVox') ;
 
   root = fileparts(mfilename('fullpath')) ;
-  addpath(root, [root '/emoVoxCeleb']) ;
+  addpath(root, [root '/emoVoxCeleb'], [root '/third_party']) ;
   addpath([root '/teacher'], [root '/misc'], [root '/external']) ;
+
+  if ~exist('zs_dispFig', 'file')
+    msg = [...
+    'NOTE: "zsvision" MATLAB package not found. It is not required to run' ...
+    ' the code itself, but is used if you wish to generate more imdbs.' ...
+    ' It can be found here: https://github.com/albanie/zsvision\n'] ;
+    fprintf(msg) ;
+  end
 
 % -----------------------------------
 function check_dependency(moduleName)

@@ -191,6 +191,9 @@ function dag = prepareFromDagNN(net, numOutputs)
 %  and ensuring that the final fully connected "prediction"
 %  layer has the correct dimensions.
 
+  if isfield(net, 'net'), net = net.net ; end
+	net = fixBackwardsCompatibility(net) ;
+
   % load stored network into memory
   dag = dagnn.DagNN.loadobj(net) ;
 
@@ -271,3 +274,21 @@ function net = insert_dropout(net, prev, next, rate)
 	lname = sprintf('%s_drop', prev) ; out = lname ;
 	net.addLayer(lname, dagnn.DropOut('rate', rate), in, out, {}) ;
 	net.setLayerInputs(next, {out}) ;
+
+% ----------------------------------------------------------
+function net = fixBackwardsCompatibility(net)
+% ----------------------------------------------------------
+%FIXBACKWARDSCOMPATIBILITY - remove unsupported attributes
+%  NET = FIXBACKWARDSCOMPATIBILITY(NET) enables backwards
+%  compatibility by remvoing attributes that are no longer
+%  supported.
+
+  removables = {'exBackprop'} ;
+  for ii = 1:numel(net.layers)
+    for jj = 1:numel(removables)
+      fieldname = removables{jj} ;
+      if isfield(net.layers(ii).block,fieldname)
+        net.layers(ii).block = rmfield(net.layers(ii).block, fieldname) ;
+      end
+    end
+  end

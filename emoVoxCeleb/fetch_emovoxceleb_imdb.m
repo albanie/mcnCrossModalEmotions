@@ -20,6 +20,7 @@ function loadedImdb = fetch_emovoxceleb_imdb(teacher, varargin)
 		fprintf('found imdb in cache, re-using..\n') ;
   else
     imdbPath = getImdbPath(opts.imdbDir, teacher) ;
+    fetchImdbFromInternet(imdbPath, 'emovoxceleb')
     if exist(imdbPath, 'file')
       fprintf('loading imdb ...\n') ; tic ;
       imdb = load(imdbPath) ;
@@ -61,7 +62,7 @@ function imdb = buildImdb(teacher, varargin)
   opts.limit = inf ; % pick number smaller than inf for debugging
   batchSize = 128 ;
   numEmotions = 8 ;
-  opts.srcImdb = fullfile(vl_rootnn, 'data/emoVoxCeleb/imdb.mat') ;
+  opts.srcImdb = fullfile(vl_rootnn, 'data/emoVoxCeleb/voxceleb-imdb.mat') ;
   opts.imdbPath = fullfile(vl_rootnn, 'data/xEmo18/dense_imdb/imdb.mat') ;
   opts.featPath = fullfile(vl_rootnn, ...
                            'data/xEmo18/featImdbs', teacher, 'imdb.mat') ;
@@ -76,6 +77,10 @@ function imdb = buildImdb(teacher, varargin)
       fprintf('done in %g s\n', toc) ;
     else
       fprintf('loading src imdb...') ; tic ;
+			if ~exist(opts.srcImdb, 'file')
+        fprintf('VoxCeleb imdb not found...\n') ;
+        fetchImdbFromInternet(opts.srcImdb, 'voxceleb')
+			end
       imdb = load(opts.srcImdb) ;
       fprintf('done in %g s\n', toc) ;
 
@@ -204,7 +209,11 @@ function imdb = addFramesToImdb(imdb, faceDir)
     cmd = sprintf('find %s/ -name "*.jpg"', faceDir) ;
     fprintf('finding image paths...\n') ; tic ;
     [status, out] = system(cmd) ;
-    assert(status == 0, 'find command failed...') ;
+    faceUrl = ['http://www.robots.ox.ac.uk/~vgg/research/CMBiometrics/data' ...
+                '/dense-face-frames.tar.gz'] ;
+    msg = ['find command failed, did you unpack the face images into %s ?' ...
+           '\n (they can be found at %s)'] ;
+    assert(status == 0, sprintf(msg, faceDir, faceUrl)) ;
     fprintf('done in %g (s)\n', toc) ;
 
     fprintf('finished find call, splitting into paths...') ; tic ;
@@ -273,4 +282,43 @@ function imdb = addFramesToImdb(imdb, faceDir)
   % store corresponding frames on the imdb object
   imdb.images.denseFrames = framePathsRelative ;
   imdb.images.denseFramesWavIds = wavIds ;
+end
+
+% -------------------------------------------------
+function fetchImdbFromInternet(destPath, imdbName)
+% -------------------------------------------------
+
+  waiting = true ;
+  prompt = sprintf(...
+        strcat('VoxCeleb Imdb was not found at %s\nWould you like to ', ...
+        ' download it from THE INTERNET (y/n)?\n'), destPath) ;
+
+  baseUrl = 'http://www.robots.ox.ac.uk/~albanie/data/cross-modal-emotions' ;
+
+  switch imdbName
+    case 'voxceleb'
+      url = [baseUrl '/voxceleb-imdb.mat'] ;
+    case 'emovoxceleb'
+      url = [baseUrl '/senet50-ferplus-logits.mat'] ;
+    otherwise
+      error('did not recognise imdb name %s\n', imdbName) ;
+  end
+
+  if exist(destPath, 'file')
+    fprintf('file already exists at destination, skipping...\n') ;
+    return
+  end
+
+  while waiting
+    str = input(prompt,'s') ;
+    switch str
+      case 'y'
+        if ~exist(fileparts(destPath), 'dir'), mkdir(fileparts(destPath)) ; end
+        fprintf('VoxCelebImdb ... \n') ;
+        urlwrite(url, destPath) ;
+        return ;
+      case 'n', throw(exception) ;
+      otherwise, fprintf('input %s not recognised, please use `y/n`\n', str) ;
+    end
+  end
 end

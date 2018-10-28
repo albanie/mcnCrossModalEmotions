@@ -83,6 +83,7 @@ function [net, info] = run_distillation(varargin)
   opts.student = 'emovoxceleb-student' ;
   opts.lossType = 'hot-cross-ent' ;
   opts.temperature = 2 ;
+  opts.fixedSegments = false ;
 	opts.learningRate = logspace(-4, -5, opts.numEpochs) ;
   opts.parameterServer = 'tmove' ;
   opts.wavDir = fullfile(vl_rootnn, 'data/ramdisk/voxceleb_all') ;
@@ -160,7 +161,13 @@ function [net, info] = run_distillation(varargin)
   meta = net.meta ;
   storeMetaInfo(opts) ;
 
-  trainfn = @cnn_train_dag_check2 ; % handles broken checkpoint issue
+  % sanity check for audio files
+  sampleAudioDir = fullfile(opts.wavDir, 'Aamir_Khan') ;
+  msg = 'could not find expected audio file at %s, did you download VoxCeleb?' ;
+  assert(logical(exist(sampleAudioDir, 'dir')), sprintf(msg, sampleAudioDir)) ;
+
+  %trainfn = @cnn_train_dag_check2 ; % handles broken checkpoint issue
+  trainfn = @cnn_train_dag ;
 	[net, info] = trainfn(net, imdb, getBatchFn(opts, meta), ...
 		'learningRate', opts.learningRate, ...
 		'batchSize', opts.batchSize,...
@@ -210,6 +217,7 @@ function fn = getBatchFn(opts, meta)
 	bopts.transformation = meta.augmentation.transformation ;
   bopts.numPredEmotions = opts.numPredEmotions ;
   bopts.logitAggregator = opts.logitAggregator ;
+  bopts.fixedSegments = opts.fixedSegments ;
   bopts.lossType = opts.lossType ;
 	bopts.meta = meta ;
   fn = @(x,y) getBatchEmoVoxCeleb(bopts,useGpu,x,y) ;
