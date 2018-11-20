@@ -16,6 +16,7 @@ vl_contrib('setup', 'mcnCrossModalEmotions') ;
 mcnCrossModalEmotions requires a working [MatConvNet](https://github.com/vlfeat/matconvnet) installation, and the following modules (which will be downloaded automatically):
 
 * [mcnDatasets](https://github.com/albanie/mcnDatasets) - dataset helpers for MatConvNet
+* [mcnExtraLayers](https://github.com/albanie/mcnExtraLayers) - extra layers for MatConvNet
 * [autonn](https://github.com/vlfeat/autonn) - autodiff for MatConvNet
 
 ### Overview
