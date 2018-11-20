@@ -18,6 +18,7 @@ mcnCrossModalEmotions requires a working [MatConvNet](https://github.com/vlfeat/
 * [mcnDatasets](https://github.com/albanie/mcnDatasets) - dataset helpers for MatConvNet
 * [mcnExtraLayers](https://github.com/albanie/mcnExtraLayers) - extra layers for MatConvNet
 * [autonn](https://github.com/vlfeat/autonn) - autodiff for MatConvNet
+* [VGGVox](https://github.com/a-nagrani/VGGVox) - VGGVox models for Speaker Identification and Verification trained on the VoxCeleb (1 & 2) datasets
 
 ### Overview
 
