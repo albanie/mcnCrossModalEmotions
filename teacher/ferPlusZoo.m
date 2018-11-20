@@ -92,8 +92,13 @@ function [dag, pretrained] = ferPlusZoo(modelName, varargin)
   end
   modelDir = fullfile(vl_rootnn, 'data/models-import', subfolder) ;
   modelPath = fullfile(modelDir, sprintf('%s.mat', modelName)) ;
-  net = load(modelPath) ;
-  if isfield(net, 'net'), net = net.net ; end
+  if ~exist(modelPath, 'file')
+    dag = emoVoxZoo(modelName) ;
+  else
+    net = load(modelPath) ;
+    if isfield(net, 'net'), net = net.net ; end
+    dag = dagnn.DagNN.loadobj(net) ;
+  end
 
   if ismember(modelName, ferPlusModels) ...
         || contains(modelName, 'net-epoch') ...
@@ -103,7 +108,7 @@ function [dag, pretrained] = ferPlusZoo(modelName, varargin)
     fprintf('Loading pretrained FER/FERplus model %s', modelName) ;
     fprintf('.... not re-initing params\n') ;
     fprintf('-----------------------------------------------------------\n') ;
-    dag = dagnn.DagNN.loadobj(net) ; dag = fixInputVarnames(dag) ;
+    dag = fixInputVarnames(dag) ;
     pretrained = true ;
     return ;
   end

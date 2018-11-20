@@ -40,6 +40,7 @@ function dag = emoVoxZoo(modelName, varargin)
   net = load(modelPath) ;
   if ~opts.scratch
     if isfield(net, 'net'), net = net.net ; end
+    net = fixBackwardsCompatibility(net) ;
     dag = dagnn.DagNN.loadobj(net) ;
     dag = fixInputVarnames(dag) ;
     fprintf('loaded pretrained %s model...\n', modelName) ;
