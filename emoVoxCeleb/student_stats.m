@@ -16,7 +16,7 @@ function student_stats(varargin)
 %    'unheardVal', 'unheardTest', 'heardVal' and 'heardTest').
 %
 %   `visHist` :: false
-%    If true, visualise the distriution of dominant predictions made by
+%    If true, visualise the distribution of dominant predictions made by
 %    the teacher.
 %
 %   `ignore` :: {'fear', 'contempt', 'disgust'}
@@ -86,15 +86,13 @@ function student_stats(varargin)
 
   for ii = 1:numel(partitions)
     partition = partitions{ii} ;
-    fprintf('compute stats for %s (%d/%d)...\n', ...
-                              partition, ii, numel(partitions)) ;
+    fprintf('compute stats for %s (%d/%d)...\n', partition, ii, numel(partitions)) ;
 
     % compute AUC using max logits as the target label
     keep = (loadedImdb.images.intersectSet == setMap(partition)) ;
     normedLogits = vl_nnsoftmaxt(studentLogits, 'dim', 2) ;
     subsetLogits = normedLogits(keep,:) ;
-    [~,teacherMaxLogits] = cellfun(@(y) max(max(y,[], 1)), ...
-                                           stored.wavLogits(keep)) ;
+    [~,teacherMaxLogits] = cellfun(@(y) max(max(y,[], 1)), stored.wavLogits(keep)) ;
 
     if opts.visHist %  visualise histogram if required
       histogram(teacherMaxLogits) ;
