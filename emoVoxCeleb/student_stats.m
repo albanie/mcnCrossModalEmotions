@@ -103,12 +103,12 @@ function student_stats(varargin)
     if ~exist(opts.figDir, 'dir'), mkdir(opts.figDir) ; end
     net = emoVoxZoo(opts.student) ;
     emotions = net.meta.classes.name ;
-    auc = zeros(1,numel(emotions)) ;
+    auc = zeros(1, numel(emotions)) ;
     for jj = 1:numel(emotions)
       classIdx = jj ;
       labels = -1 * ones(1, numel(teacherMaxLogits)) ;
       labels(teacherMaxLogits == classIdx) = 1 ;
-      scores = subsetLogits(:,classIdx) ;
+      scores = subsetLogits(:, classIdx) ;
       [~,~,info] = vl_roc(labels, scores) ;
       auc(jj) = info.auc ;
 

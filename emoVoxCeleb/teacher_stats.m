@@ -23,8 +23,7 @@ function teacher_stats(varargin)
 
   fprintf('loading imdb of predictions on EmoVoxCeleb...') ; tic ;
   opts.teacher = 'senet50_ft-dag-distributions-CNTK-dropout-0.5-aug' ;
-  imdb = fetch_emoceleb_imdb('duration', -1, 'fixedSeg', 0, ...
-                             'teacher', opts.teacher) ;
+  imdb = fetch_emoceleb_imdb('duration', -1, 'fixedSeg', 0, 'teacher', opts.teacher) ;
   allLogits = vertcat(imdb.wavLogits{:}) ;
   [~, emoVoxPreds] = max(allLogits, [], 2) ;
   fprintf('done in %g (s) \n', toc) ;
