@@ -18,23 +18,28 @@ function teacher_stats(varargin)
 % Licensed under The MIT License [see LICENSE.md for details]
 
   opts.figurePath = fullfile(vl_rootnn, ...
-                       'data/xEmo18/emovoxceleb-figure.pdf') ;
+                       'data/emoVoxCeleb/emovoxceleb-figure.pdf') ;
+  opts.afewLogits = fullfile(vl_rootnn, 'data/emoVoxCeleb/afew-logits.mat') ;
   opts = vl_argparse(opts, varargin) ;
 
   fprintf('loading imdb of predictions on EmoVoxCeleb...') ; tic ;
-  opts.teacher = 'senet50_ft-dag-distributions-CNTK-dropout-0.5-aug' ;
-  imdb = fetch_emoceleb_imdb('duration', -1, 'fixedSeg', 0, 'teacher', opts.teacher) ;
+  opts.teacher = 'senet50-ferplus' ;
+  imdb = fetch_emovoxceleb_imdb(opts.teacher) ;
   allLogits = vertcat(imdb.wavLogits{:}) ;
   [~, emoVoxPreds] = max(allLogits, [], 2) ;
   fprintf('done in %g (s) \n', toc) ;
 
   fprintf('loading imdb of teacher predictions on AFEW...') ; tic ;
-  path = '/scratch/shared/nfs1/albanie/mcn/contrib-matconvnet/xEmo18/afew_storedFeats/senet50_ft-dag-distributions-CNTK-dropout-0.5-aug-logits-blur-0.mat' ; % TODO(samuel) remove hardcoding
-  xx = load(path) ;
+  % Note: These are stored online as a convenience but can be recomputed
+  % if desired.
+  if ~exist(fileparts(opts.afewLogits), 'dir')
+		mkdir(fileparts(opts.afewLogits)) ;
+	end
+	fetchLogitsFromInternet(opts.afewLogits, 'afew-logits') ;
+  xx = load(opts.afewLogits) ;
   emos = vertcat(xx.faceLogits{:}) ;
   [~, afewPreds] = max(emos, [], 2) ;
   fprintf('done in %g (s) \n', toc) ;
-
   plotHistogram(emoVoxPreds, afewPreds, opts.figurePath) ;
 end
 
@@ -76,4 +81,41 @@ function plotHistogram(emoVoxPreds, afewPreds, figurePath)
   set(h,'PaperPositionMode', 'Auto', ...
          'PaperUnits', 'Inches', 'PaperSize',[pos(3), pos(4)]) ;
   print(figurePath, '-dpdf','-r0') ;
+end
+
+% -------------------------------------------------
+function fetchLogitsFromInternet(destPath, imdbName)
+% -------------------------------------------------
+
+  waiting = true ;
+  prompt = sprintf(...
+        strcat('Logits were not found at %s\nWould you like to ', ...
+        ' download them from THE INTERNET (y/n)?\n'), destPath) ;
+
+  baseUrl = 'http://www.robots.ox.ac.uk/~albanie/data/cross-modal-emotions' ;
+
+  switch imdbName
+    case 'afew-logits'
+      url = [baseUrl '/afew-logits.mat'] ;
+    otherwise
+      error('did not recognise imdb name %s\n', imdbName) ;
+  end
+
+  if exist(destPath, 'file')
+    fprintf('file already exists at destination, skipping...\n') ;
+    return
+  end
+
+  while waiting
+    str = input(prompt,'s') ;
+    switch str
+      case 'y'
+        if ~exist(fileparts(destPath), 'dir'), mkdir(fileparts(destPath)) ; end
+        fprintf('VoxCelebImdb ... \n') ;
+        urlwrite(url, destPath) ;
+        return ;
+      case 'n', throw(exception) ;
+      otherwise, fprintf('input %s not recognised, please use `y/n`\n', str) ;
+    end
+  end
 end

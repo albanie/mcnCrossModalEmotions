@@ -18,8 +18,11 @@ vl_contrib('setup', 'mcnCrossModalEmotions') ;
 mcnCrossModalEmotions requires a working [MatConvNet](https://github.com/vlfeat/matconvnet) installation, and the following modules (which will be downloaded automatically):
 
 * [mcnDatasets](https://github.com/albanie/mcnDatasets) - dataset helpers for MatConvNet
+* [mcnExtraLayers](https://github.com/albanie/mcnExtraLayers) - extra layers for MatConvNet
 * [autonn](https://github.com/vlfeat/autonn) - autodiff for MatConvNet
+* [VGGVox](https://github.com/a-nagrani/VGGVox) - VGGVox models for Speaker Identification and Verification trained on the VoxCeleb (1 & 2) datasets
 
+Some of the scripts for analysis require [vlfeat](http://www.vlfeat.org/) (although this is not required for training).
 ### Overview
 
 The [project page](http://www.robots.ox.ac.uk/~vgg/research/cross-modal-emotions/) has a high level overview of the work.

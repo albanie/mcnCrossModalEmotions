@@ -57,7 +57,7 @@ function destPath = compute_audio_feats(destPath, varargin)
     return
   end
 
-  switch opts.targetDataset % TODO: fix/avoid hardcoding of data dirs
+  switch opts.targetDataset % NOTE: These need to be setup for your system
     case 'afew'
       opts.dataDir = fullfile(vl_rootnn, 'data/datasets/emotiw2016') ;
       getImdb = @(x) getAfewImdb(x, 'dropTracksWithNoDets', 1) ;

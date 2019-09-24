@@ -31,6 +31,8 @@ function student_stats(varargin)
 %   `student` :: 'emovoxceleb-student'
 %    The name of the stduent model.
 %
+%   NOTES: vl_roc (from the vlfeat toolbox) is required to plot the curves.
+%
 % Copyright (C) 2018 Samuel Albanie, Arsha Nagrani
 % Licensed under The MIT License [see LICENSE.md for details]
 
@@ -70,7 +72,7 @@ function student_stats(varargin)
 
   if ~exist('loadedImdb', 'var')
     fprintf('loading EmoVoxCeleb Imdb...') ; tic ;
-    loadedImdb = fetch_emoceleb_imdb() ;
+    loadedImdb = fetch_emovoxceleb_imdb(opts.teacher) ;
     fprintf('done in %g s\n', toc) ;
   end
 
@@ -89,7 +91,7 @@ function student_stats(varargin)
     fprintf('compute stats for %s (%d/%d)...\n', partition, ii, numel(partitions)) ;
 
     % compute AUC using max logits as the target label
-    keep = (loadedImdb.images.intersectSet == setMap(partition)) ;
+    keep = (loadedImdb.images.set == setMap(partition)) ;
     normedLogits = vl_nnsoftmaxt(studentLogits, 'dim', 2) ;
     subsetLogits = normedLogits(keep,:) ;
     [~,teacherMaxLogits] = cellfun(@(y) max(max(y,[], 1)), stored.wavLogits(keep)) ;
